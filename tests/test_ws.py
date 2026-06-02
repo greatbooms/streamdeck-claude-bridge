@@ -76,3 +76,29 @@ async def test_cancel_injects_esc(client, store, injector):
     await asyncio.sleep(0.05)
     assert injector.cancelled == ["U1"]
     await ws.close()
+
+async def test_malformed_json_does_not_drop_connection(client, store, injector):
+    store.add(Question(session="U1", header="h", question="q",
+                       options=[Option("A"), Option("B")], multiSelect=False))
+    ws = await client.ws_connect("/ws")
+    await ws.receive()  # sync
+    await ws.send_str("this is not json {{{")
+    # connection must survive: a following valid answer still works
+    await ws.send_str(json.dumps({"type": "answer", "session": "U1", "index": 1}))
+    msg = json.loads((await ws.receive()).data)
+    assert msg == {"type": "question_resolved", "session": "U1"}
+    assert injector.selected == [("U1", 1)]
+    await ws.close()
+
+async def test_non_integer_index_does_not_drop_connection(client, store, injector):
+    store.add(Question(session="U1", header="h", question="q",
+                       options=[Option("A")], multiSelect=False))
+    ws = await client.ws_connect("/ws")
+    await ws.receive()  # sync
+    await ws.send_str(json.dumps({"type": "answer", "session": "U1", "index": "oops"}))
+    # bad index ignored, no injection, connection alive → ping with cancel works
+    await ws.send_str(json.dumps({"type": "cancel", "session": "U1"}))
+    await asyncio.sleep(0.05)
+    assert injector.selected == []
+    assert injector.cancelled == ["U1"]
+    await ws.close()

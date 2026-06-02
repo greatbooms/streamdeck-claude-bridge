@@ -57,11 +57,15 @@ def make_ws_handler(store, hub, injector):
             async for msg in ws:
                 if msg.type != WSMsgType.TEXT:
                     continue
-                data = json.loads(msg.data)
-                if data.get("type") == "answer":
-                    await _handle_answer(data, store, hub, injector)
-                elif data.get("type") == "cancel":
-                    await _handle_cancel(data, injector)
+                try:
+                    data = json.loads(msg.data)
+                    mtype = data.get("type")
+                    if mtype == "answer":
+                        await _handle_answer(data, store, hub, injector)
+                    elif mtype == "cancel":
+                        await _handle_cancel(data, injector)
+                except (json.JSONDecodeError, ValueError, TypeError, KeyError):
+                    continue
         finally:
             hub.unregister(ws)
         return ws
