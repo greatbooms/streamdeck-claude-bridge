@@ -15,12 +15,20 @@ class FakeApp:
         return self._sessions.get(sid)
 
 
-async def test_select_sends_key_sequence():
+async def test_select_sends_keys_separately():
+    # 방향키와 Enter 를 붙여 보내면 TUI 가 down 을 놓치므로, 개별 전송이어야 한다.
     sess = FakeSession()
-    inj = ItermInjector()
+    inj = ItermInjector(key_delay=0)
     inj._app = FakeApp({"U1": sess})
     await inj._select("U1", 3)
-    assert sess.sent == ["\x1b[B\x1b[B\r"]
+    assert sess.sent == ["\x1b[B", "\x1b[B", "\r"]
+
+async def test_select_index_one_is_just_enter():
+    sess = FakeSession()
+    inj = ItermInjector(key_delay=0)
+    inj._app = FakeApp({"U1": sess})
+    await inj._select("U1", 1)
+    assert sess.sent == ["\r"]
 
 async def test_select_unknown_session_raises():
     inj = ItermInjector()
