@@ -1,2 +1,25 @@
-<!doctype html><meta charset="utf-8"><title>Claude 질문 브릿지</title>
-<body><h1>Claude 질문 브릿지</h1></body>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>Claude 질문 브릿지</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    #status { color: #888; font-size: .9rem; margin-bottom: 1rem; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+    .q { font-weight: 600; margin-bottom: .6rem; }
+    .note { color: #b36b00; font-size: .85rem; margin-bottom: .5rem; }
+    .opt { display: block; width: 100%; text-align: left; padding: .6rem .8rem; margin: .3rem 0;
+           border: 1px solid #ccc; border-radius: 8px; background: #fafafa; cursor: pointer; font-size: 1rem; }
+    .opt:hover { background: #eef; }
+    .opt.ro { cursor: default; background: #f3f3f3; color: #555; }
+    .empty { color: #aaa; }
+  </style>
+</head>
+<body>
+  <h1>🔔 Claude 질문 브릿지</h1>
+  <div id="status">연결 중…</div>
+  <div id="questions"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
