@@ -84,5 +84,6 @@ class ItermInjector:
             except Exception as e:  # noqa: BLE001
                 log.warning("iTerm2 연결 실패/끊김, 3초 후 재연결: %s", e)
                 self._app = None
+                self._loop = None  # 멈춘 루프로의 제출이 행(hang) 되지 않도록 함께 비움
                 import time
                 time.sleep(3)
