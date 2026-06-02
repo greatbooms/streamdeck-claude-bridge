@@ -1,6 +1,9 @@
 import json
 import asyncio
+import logging
 from aiohttp import web, WSMsgType
+
+log = logging.getLogger("bridge.ws")
 
 
 class Hub:
@@ -30,8 +33,8 @@ async def _handle_answer(data, store, hub, injector):
         await hub.broadcast({"type": "error", "session": session,
                              "message": "다중선택은 터미널에서 직접 선택하세요"})
         return
-    fut = injector.submit_select(session, index)
     try:
+        fut = injector.submit_select(session, index)
         await asyncio.wrap_future(fut)
     except Exception as e:  # noqa: BLE001
         await hub.broadcast({"type": "error", "session": session, "message": str(e)})
@@ -42,8 +45,12 @@ async def _handle_answer(data, store, hub, injector):
 
 async def _handle_cancel(data, injector):
     session = data.get("session", "")
-    if session:
+    if not session:
+        return
+    try:
         injector.submit_cancel(session)
+    except Exception as e:  # noqa: BLE001
+        log.warning("cancel 제출 실패(iTerm2 미연결 가능): %s", e)
 
 
 def make_ws_handler(store, hub, injector):

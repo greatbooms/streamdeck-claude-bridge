@@ -102,3 +102,34 @@ async def test_non_integer_index_does_not_drop_connection(client, store, injecto
     assert injector.selected == []
     assert injector.cancelled == ["U1"]
     await ws.close()
+
+
+class RaisingInjector:
+    """iTerm2 미연결 상태 모사: submit_* 가 동기적으로 RuntimeError 를 던진다."""
+    def submit_select(self, session, index):
+        raise RuntimeError("iTerm2 injector loop not ready")
+    def submit_cancel(self, session):
+        raise RuntimeError("iTerm2 injector loop not ready")
+
+
+async def test_disconnected_injector_reports_error_and_keeps_connection(aiohttp_client):
+    store = PendingStore()
+    store.add(Question(session="U1", header="h", question="q",
+                       options=[Option("A")], multiSelect=False))
+    hub = Hub()
+    app = web.Application()
+    app.router.add_get("/ws", make_ws_handler(store, hub, RaisingInjector()))
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/ws")
+    await ws.receive()  # sync
+    await ws.send_str(json.dumps({"type": "answer", "session": "U1", "index": 1}))
+    msg = json.loads((await ws.receive()).data)
+    assert msg["type"] == "error"
+    # question NOT resolved (inject never happened)
+    assert store.get("U1") is not None
+    # connection still alive: a cancel must not crash it either, and a follow-up answer still gets a response
+    await ws.send_str(json.dumps({"type": "cancel", "session": "U1"}))
+    await ws.send_str(json.dumps({"type": "answer", "session": "U1", "index": 1}))
+    msg2 = json.loads((await ws.receive()).data)
+    assert msg2["type"] == "error"
+    await ws.close()
