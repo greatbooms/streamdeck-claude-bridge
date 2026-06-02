@@ -133,3 +133,23 @@ async def test_disconnected_injector_reports_error_and_keeps_connection(aiohttp_
     msg2 = json.loads((await ws.receive()).data)
     assert msg2["type"] == "error"
     await ws.close()
+
+
+async def test_resolved_broadcasts_to_all_clients(aiohttp_client):
+    # 에러는 요청자에게만 가지만, 해소(resolved)는 모든 클라이언트가 받아 UI 동기화돼야 한다.
+    store = PendingStore()
+    store.add(Question(session="U1", header="h", question="q",
+                       options=[Option("A"), Option("B")], multiSelect=False))
+    injector = FakeInjector()
+    hub = Hub()
+    app = web.Application()
+    app.router.add_get("/ws", make_ws_handler(store, hub, injector))
+    client = await aiohttp_client(app)
+    a = await client.ws_connect("/ws"); await a.receive()  # sync
+    b = await client.ws_connect("/ws"); await b.receive()  # sync
+    await a.send_str(json.dumps({"type": "answer", "session": "U1", "index": 1}))
+    ma = json.loads((await a.receive()).data)
+    mb = json.loads((await b.receive()).data)
+    assert ma == {"type": "question_resolved", "session": "U1"}
+    assert mb == {"type": "question_resolved", "session": "U1"}
+    await a.close(); await b.close()

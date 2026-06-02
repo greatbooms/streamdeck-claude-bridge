@@ -23,21 +23,27 @@ class Hub:
                 await ws.send_str(data)
 
 
-async def _handle_answer(data, store, hub, injector):
+async def _send(ws, msg: dict):
+    if not ws.closed:
+        await ws.send_str(json.dumps(msg))
+
+
+async def _handle_answer(ws, data, store, hub, injector):
     session = data.get("session", "")
     index = int(data.get("index", 0))
     q = store.get(session)
     if q is None:
         return
+    # 에러는 요청한 클라이언트에게만, 해소(resolved)는 모든 클라이언트에게 브로드캐스트.
     if q.multiSelect:
-        await hub.broadcast({"type": "error", "session": session,
-                             "message": "다중선택은 터미널에서 직접 선택하세요"})
+        await _send(ws, {"type": "error", "session": session,
+                         "message": "다중선택은 터미널에서 직접 선택하세요"})
         return
     try:
         fut = injector.submit_select(session, index)
         await asyncio.wrap_future(fut)
     except Exception as e:  # noqa: BLE001
-        await hub.broadcast({"type": "error", "session": session, "message": str(e)})
+        await _send(ws, {"type": "error", "session": session, "message": str(e)})
         return
     store.resolve(session)
     await hub.broadcast({"type": "question_resolved", "session": session})
@@ -68,7 +74,7 @@ def make_ws_handler(store, hub, injector):
                     data = json.loads(msg.data)
                     mtype = data.get("type")
                     if mtype == "answer":
-                        await _handle_answer(data, store, hub, injector)
+                        await _handle_answer(ws, data, store, hub, injector)
                     elif mtype == "cancel":
                         await _handle_cancel(data, injector)
                 except (json.JSONDecodeError, ValueError, TypeError, KeyError):

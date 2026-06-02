@@ -62,6 +62,9 @@ open http://localhost:8787/           # 브라우저 테스트 클라이언트
 
 사전조건: iTerm2 > Settings > General > Magic > **Enable Python API**.
 
+자동 시작(로그인 시 + 죽으면 재시작): `bash scripts/install-launchd.sh`
+(해제: `launchctl unload ~/Library/LaunchAgents/com.streamdeck-claude-bridge.plist`)
+
 설계/계획 문서: [docs/superpowers/specs/2026-06-02-bridge-server-design.md](docs/superpowers/specs/2026-06-02-bridge-server-design.md),
 [docs/superpowers/plans/2026-06-02-bridge-server.md](docs/superpowers/plans/2026-06-02-bridge-server.md).
 

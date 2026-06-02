@@ -1,4 +1,3 @@
-import os
 import logging
 from pathlib import Path
 from aiohttp import web
