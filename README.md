@@ -43,13 +43,35 @@
 
 ## 다음 단계 (구현)
 
-- [ ] **로컬 브릿지 서버**
-  - dump-hook.sh 를 실제 브릿지로 교체: 훅이 질문/선택지/ITERM_SESSION_ID 를 서버로 POST
-  - 서버가 보류 중인 질문 상태 보관 + 스트림덱으로 push (WebSocket)
-  - 스트림덱 버튼 콜백 → 서버가 `inject-keys.py` 로직으로 해당 세션에 down×(N-1)+Enter 주입
-  - iTerm2 Python API 연결 상시 유지(서버가 한 connection 으로 모든 세션 제어)
-- [ ] **스트림덱 커스텀 플러그인**
+- [x] **로컬 브릿지 서버** (구현 완료 → `bridge/`, 아래 "브릿지 서버 실행" 참고)
+  - 훅(`.claude/hooks/on-question.sh`, `on-resolved.sh`)이 질문/선택지/ITERM_SESSION_ID 를 서버로 POST
+  - 서버가 보류 질문 상태 보관 + WebSocket 으로 클라이언트에 push
+  - 버튼 콜백 → 서버가 해당 세션에 down×(N-1)+Enter 주입 (단일선택), multiSelect 는 알림 전용
+  - iTerm2 Python API 연결 상시 유지(전용 스레드, 한 connection 으로 모든 세션 제어)
+- [ ] **스트림덱 커스텀 플러그인** (다음 하위 프로젝트)
   - 전용 프로파일/버튼에 질문·선택지 라벨 표시, 누르면 서버로 답 인덱스 전송
+  - 브릿지의 WS 프로토콜(`sync`/`question_added`/`question_resolved`/`answer`/`cancel`)을 그대로 사용
+
+## 브릿지 서버 실행
+
+```bash
+python3 -m pip install -e ".[dev]"   # 최초 1회 (의존성 + 패키지)
+python3 -m bridge                     # http://localhost:8787 (env BRIDGE_PORT 로 변경 가능)
+open http://localhost:8787/           # 브라우저 테스트 클라이언트
+```
+
+사전조건: iTerm2 > Settings > General > Magic > **Enable Python API**.
+
+설계/계획 문서: [docs/superpowers/specs/2026-06-02-bridge-server-design.md](docs/superpowers/specs/2026-06-02-bridge-server-design.md),
+[docs/superpowers/plans/2026-06-02-bridge-server.md](docs/superpowers/plans/2026-06-02-bridge-server.md).
+
+### 수동 e2e 체크리스트
+1. 브릿지 기동 + 브라우저로 테스트 클라이언트 열기.
+2. iTerm2 에서 이 폴더로 `claude` 실행(훅 로드 승인).
+3. claude 가 **단일선택** AskUserQuestion 을 내게 유도.
+4. 테스트 클라이언트에 질문 카드 + 선택지 버튼이 뜨는지 확인.
+5. 버튼 N 클릭 → iTerm2 메뉴에서 N 번째가 선택되고 claude 가 진행되는지 확인.
+6. **multiSelect** 질문은 "터미널에서 직접 선택" 안내만 뜨는지 확인.
 
 ## scripts
 
