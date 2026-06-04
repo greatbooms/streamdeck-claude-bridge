@@ -1,1 +1,5 @@
 logs/
+node_modules/
+streamdeck-plugin/node_modules/
+streamdeck-plugin/com.shinsanghoon.claude-bridge.sdPlugin/bin/
+*.egg-info/
