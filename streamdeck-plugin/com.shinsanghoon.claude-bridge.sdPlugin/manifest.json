@@ -1,0 +1,33 @@
+{
+  "Name": "Claude Bridge",
+  "Description": "Bridge Stream Deck keys to claude CLI sessions via the claude-bridge websocket server.",
+  "Version": "0.1.0.0",
+  "Author": "shinsanghoon",
+  "Actions": [
+    {
+      "Name": "Answer",
+      "UUID": "com.shinsanghoon.claude-bridge.answer",
+      "Icon": "imgs/actions/answer/icon",
+      "Tooltip": "클로드 질문의 선택지에 답합니다 (optionIndex)",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/actions/answer/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Cancel",
+      "UUID": "com.shinsanghoon.claude-bridge.cancel",
+      "Icon": "imgs/actions/cancel/icon",
+      "Tooltip": "현재 질문을 취소(Esc)하고 복귀합니다",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/actions/cancel/key", "TitleAlignment": "middle" }]
+    }
+  ],
+  "Category": "Claude Bridge",
+  "CategoryIcon": "imgs/plugin/category-icon",
+  "Icon": "imgs/plugin/marketplace",
+  "SDKVersion": 2,
+  "Software": { "MinimumVersion": "6.5" },
+  "Nodejs": { "Version": "20", "Debug": "enabled" },
+  "CodePath": "bin/plugin.js",
+  "UUID": "com.shinsanghoon.claude-bridge",
+  "OS": [{ "Platform": "mac", "MinimumVersion": "12" }]
+}
