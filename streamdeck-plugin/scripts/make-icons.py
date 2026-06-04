@@ -101,21 +101,27 @@ def logo_single():
 
 
 def banner_tiles():
-    """720x144 스트립에 ✻ CLAUDE CODE 를 그려 5조각으로 자른다."""
+    """720x144 스트립에 ✻ CLAUDE CODE 를 가운데 정렬로 그리고 5조각으로 자른다.
+    전폭 하단 코랄 바로 5칸이 하나의 띠처럼 보이게 한다."""
     W, H = 720, 144
     strip = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(strip)
-    d.rounded_rectangle([2, 2, W - 3, H - 3], radius=16, fill=BG)
-    draw_spark(d, 120, 72, 44, CORAL)
-    f = font(64)
-    # "CLAUDE CODE" 를 스파크 오른쪽에 배치
-    d.text((196, 40), "CLAUDE ", font=f, fill=CREAM)
-    cl_w = d.textlength("CLAUDE ", font=f)
-    d.text((196 + cl_w, 40), "CODE", font=f, fill=CORAL)
-    tiles = []
-    for i in range(5):
-        tiles.append(strip.crop((i * 144, 0, (i + 1) * 144, 144)))
-    return tiles
+    d.rounded_rectangle([2, 2, W - 3, H - 3], radius=18, fill=BG)
+    d.rectangle([26, H - 22, W - 26, H - 15], fill=CORAL)  # 전폭 하단 바
+    f = font(60)
+    t1, t2 = "CLAUDE ", "CODE"
+    tw = d.textlength(t1, font=f) + d.textlength(t2, font=f)
+    spark_r, gap = 40, 30
+    group = spark_r * 2 + gap + tw
+    x0 = (W - group) / 2
+    cy = 60
+    draw_spark(d, x0 + spark_r, cy, spark_r, CORAL)
+    tx = x0 + spark_r * 2 + gap
+    bb = d.textbbox((0, 0), "CLAUDE CODE", font=f)
+    ty = cy - (bb[3] - bb[1]) / 2 - bb[1]
+    d.text((tx, ty), t1, font=f, fill=CREAM)
+    d.text((tx + d.textlength(t1, font=f), ty), t2, font=f, fill=CORAL)
+    return [strip.crop((i * 144, 0, (i + 1) * 144, 144)) for i in range(5)]
 
 
 def main():
