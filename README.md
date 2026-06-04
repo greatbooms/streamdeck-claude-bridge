@@ -76,6 +76,25 @@ open http://localhost:8787/           # 브라우저 테스트 클라이언트
 5. 버튼 N 클릭 → iTerm2 메뉴에서 N 번째가 선택되고 claude 가 진행되는지 확인.
 6. **multiSelect** 질문은 "터미널에서 직접 선택" 안내만 뜨는지 확인.
 
+## 스트림덱 플러그인
+
+빌드 & 설치:
+```bash
+npm i -g @elgato/cli           # 최초 1회
+cd streamdeck-plugin && npm install && npm run build
+npx @elgato/cli link com.shinsanghoon.claude-bridge.sdPlugin
+npx @elgato/cli restart com.shinsanghoon.claude-bridge
+```
+
+구성:
+1. Stream Deck 앱에서 "Claude Answers" 프로파일을 만든다.
+2. 버튼들에 **Answer** 액션을 올리고, 각 버튼의 Property Inspector 에서 `선택지 번호`를 1,2,3… 으로 설정.
+3. 한 버튼에 **Cancel** 액션 배치.
+
+동작: 브릿지(`python -m bridge`)가 떠 있는 상태에서 클로드 질문이 오면 스트림덱이
+"Claude Answers" 프로파일로 자동 전환되고, 버튼으로 답하면 해당 iTerm2 세션에 주입된 뒤
+원래 프로파일로 복귀한다. multiSelect 질문은 알림 전용(터미널에서 직접 선택).
+
 ## scripts
 
 - `dump-hook.sh` — PreToolUse(AskUserQuestion) 훅 덤프 (PoC 1)
