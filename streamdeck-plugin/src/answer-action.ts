@@ -25,7 +25,7 @@ export class AnswerAction extends SingletonAction<AnswerSettings> {
   }
 
   override async onKeyDown(ev: KeyDownEvent<AnswerSettings>): Promise<void> {
-    const index = ev.payload.settings.optionIndex ?? 0;
+    const index = Number(ev.payload.settings.optionIndex ?? 0) || 0;
     const session = this.client.state.activeSession();
     if (!session || index < 1 || this.client.state.isMultiSelect()) {
       await ev.action.showAlert();
@@ -44,7 +44,7 @@ export class AnswerAction extends SingletonAction<AnswerSettings> {
   }
 
   private async refresh(a: KeyAction<AnswerSettings>, settings: AnswerSettings): Promise<void> {
-    const index = settings.optionIndex ?? 0;
+    const index = Number(settings.optionIndex ?? 0) || 0;
     const label = index >= 1 ? this.client.state.labelFor(index) : null;
     await a.setTitle(label ?? "");
   }

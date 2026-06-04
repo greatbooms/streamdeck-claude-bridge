@@ -10,7 +10,8 @@
       "Icon": "imgs/actions/answer/icon",
       "Tooltip": "클로드 질문의 선택지에 답합니다 (optionIndex)",
       "Controllers": ["Keypad"],
-      "States": [{ "Image": "imgs/actions/answer/key", "TitleAlignment": "middle" }]
+      "States": [{ "Image": "imgs/actions/answer/key", "TitleAlignment": "middle" }],
+      "PropertyInspectorPath": "ui/answer.html"
     },
     {
       "Name": "Cancel",
