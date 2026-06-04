@@ -20,6 +20,14 @@
       "Tooltip": "현재 질문을 취소(Esc)하고 복귀합니다",
       "Controllers": ["Keypad"],
       "States": [{ "Image": "imgs/actions/cancel/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Logo",
+      "UUID": "com.shinsanghoon.claude-bridge.logo",
+      "Icon": "imgs/actions/logo/icon",
+      "Tooltip": "Claude Code 로고 (표시 전용 · 첫 줄 배너용)",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/actions/logo/key" }]
     }
   ],
   "Category": "Claude Bridge",

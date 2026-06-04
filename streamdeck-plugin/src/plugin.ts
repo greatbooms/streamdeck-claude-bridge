@@ -4,6 +4,7 @@ import { BridgeClient, type WebSocketLike } from "./bridge-client.js";
 import { ProfileSwitcher } from "./profile-switcher.js";
 import { AnswerAction } from "./answer-action.js";
 import { CancelAction } from "./cancel-action.js";
+import { LogoAction } from "./logo-action.js";
 
 const PROFILE = "Claude Answers";
 const URL = "ws://127.0.0.1:8787/ws";
@@ -36,5 +37,6 @@ client.onChange(() => {
 
 streamDeck.actions.registerAction(answerAction);
 streamDeck.actions.registerAction(cancelAction);
+streamDeck.actions.registerAction(new LogoAction());
 streamDeck.connect();
 client.start();
