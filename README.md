@@ -88,14 +88,21 @@ npx @elgato/cli link com.shinsanghoon.claude-bridge.sdPlugin
 npx @elgato/cli restart com.shinsanghoon.claude-bridge
 ```
 
-구성:
-1. Stream Deck 앱에서 "Claude Answers" 프로파일을 만든다.
-2. 버튼들에 **Answer** 액션을 올리고, 각 버튼의 Property Inspector 에서 `선택지 번호`를 1,2,3… 으로 설정.
-3. 한 버튼에 **Cancel** 액션 배치.
+설치 시 `streamdeck` 앱이 번들 **"Claude Bridge"** 프로파일(배너+Answer×N+Cancel 사전구성)을
+기기에 설치할지 묻는다 → "프로필 설치". 별도 버튼 구성 불필요.
 
-동작: 브릿지(`python -m bridge`)가 떠 있는 상태에서 클로드 질문이 오면 스트림덱이
-"Claude Answers" 프로파일로 자동 전환되고, 버튼으로 답하면 해당 iTerm2 세션에 주입된 뒤
-원래 프로파일로 복귀한다. multiSelect 질문은 알림 전용(터미널에서 직접 선택).
+### 실사용 설정 (중요)
+
+1. **글로벌 훅** — 어느 프로젝트 claude 든 미러링하려면 `~/.claude/settings.json` 의 `hooks` 에
+   `PreToolUse`/`PostToolUse`(matcher `AskUserQuestion`)를 이 repo 의 `.claude/hooks/on-question.sh`,
+   `on-resolved.sh` **절대경로**로 등록. (프로젝트-로컬 훅은 그 폴더 세션만 발화.)
+   적용은 **세션 재시작** 후.
+2. **브릿지 상시 실행** — `python3 -m bridge` (또는 `bash scripts/install-launchd.sh` 로 자동 시작).
+3. 평소엔 **본인 작업 프로파일**에 둔다.
+
+동작: 클로드 질문이 오면 스트림덱(표준 SD, DeviceType 0)이 **"Claude Bridge"** 프로파일로 자동 전환되고,
+버튼으로 답하면 해당 iTerm2 세션에 주입된 뒤 **직전(작업) 프로파일로 복귀**한다.
+multiSelect 질문은 알림 전용(터미널에서 직접 선택).
 
 ## scripts
 
