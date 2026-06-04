@@ -82,3 +82,22 @@ describe("BridgeClient", () => {
     expect(scheduled.length).toBe(0);
   });
 });
+
+describe("BridgeClient stop during pending reconnect", () => {
+  it("stop() before a scheduled reconnect fires prevents reconnect", () => {
+    const sockets: FakeWs[] = [];
+    const scheduled: Array<() => void> = [];
+    const client = new BridgeClient(
+      "ws://x/ws",
+      () => { const w = new FakeWs(); sockets.push(w); return w; },
+      (fn) => { scheduled.push(fn); },
+    );
+    client.start();
+    sockets[0].onopen?.();
+    sockets[0].onclose?.();          // 비정상 종료 → 재연결 예약
+    expect(scheduled.length).toBe(1);
+    client.stop();                   // 예약 실행 전에 사용자가 중단
+    scheduled[0]();                  // 예약된 콜백 실행
+    expect(sockets.length).toBe(1);  // 새 소켓 생성 안 됨
+  });
+});

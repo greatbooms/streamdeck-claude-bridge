@@ -57,7 +57,11 @@ export class BridgeClient {
     this.emit();
     if (!this.closedByUser && !this.reconnectScheduled) {
       this.reconnectScheduled = true;
-      this.scheduleReconnect(() => { this.reconnectScheduled = false; this.connect(); });
+      this.scheduleReconnect(() => {
+        this.reconnectScheduled = false;
+        if (this.closedByUser) return; // stop() 이 그 사이 호출됐으면 재연결하지 않음
+        this.connect();
+      });
     }
   }
 
