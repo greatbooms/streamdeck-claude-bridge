@@ -62,11 +62,11 @@ export function answerSvg(label: string | null): string {
   let body = "";
   const text = (label ?? "").trim();
   if (text) {
-    const lines = wrapLabel(text, 6.2, 4);
-    const fs = 19;
-    const lh = 22;
+    const lines = wrapLabel(text, 5.0, 4);
+    const fs = 24;
+    const lh = 28;
     const x = 13;
-    const y0 = 28;
+    const y0 = 32;
     // tspan dy 는 SD 렌더러가 무시하므로, 줄마다 별도 <text> 요소(절대 y)로 그린다.
     body = lines
       .map(
