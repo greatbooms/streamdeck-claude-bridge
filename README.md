@@ -48,9 +48,11 @@
   - 서버가 보류 질문 상태 보관 + WebSocket 으로 클라이언트에 push
   - 버튼 콜백 → 서버가 해당 세션에 down×(N-1)+Enter 주입 (단일선택), multiSelect 는 알림 전용
   - iTerm2 Python API 연결 상시 유지(전용 스레드, 한 connection 으로 모든 세션 제어)
-- [ ] **스트림덱 커스텀 플러그인** (다음 하위 프로젝트)
-  - 전용 프로파일/버튼에 질문·선택지 라벨 표시, 누르면 서버로 답 인덱스 전송
-  - 브릿지의 WS 프로토콜(`sync`/`question_added`/`question_resolved`/`answer`/`cancel`)을 그대로 사용
+- [x] **스트림덱 커스텀 플러그인** (구현 완료 → `streamdeck-plugin/`, 아래 "스트림덱 플러그인" 참고)
+  - TS + `@elgato/streamdeck` SDK. 질문 오면 "Claude Answers" 프로파일로 자동 전환 →
+    버튼으로 답 → 직전 프로파일 복귀. 브릿지 WS 프로토콜 그대로 소비, 19개 단위 테스트.
+  - 남은 수동 단계: SD 앱에서 "Claude Answers" 프로파일을 만들어 export(`.streamDeckProfile`)하고
+    매니페스트 `Profiles` 에 선언해야 자동 전환이 실제로 동작함(SDK 제약).
 
 ## 브릿지 서버 실행
 
