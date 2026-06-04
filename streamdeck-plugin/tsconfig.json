@@ -6,7 +6,6 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "outDir": "com.shinsanghoon.claude-bridge.sdPlugin/bin",
     "rootDir": "src"
