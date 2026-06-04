@@ -30,6 +30,9 @@
       "States": [{ "Image": "imgs/actions/logo/key" }]
     }
   ],
+  "Profiles": [
+    { "Name": "Claude Bridge", "DeviceType": 0, "Readonly": false }
+  ],
   "Category": "Claude Bridge",
   "CategoryIcon": "imgs/plugin/category-icon",
   "Icon": "imgs/plugin/marketplace",

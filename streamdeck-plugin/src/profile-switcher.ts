@@ -9,19 +9,25 @@ export class ProfileSwitcher {
     private api: ProfileApi,
     private deviceId: () => string | null,
     private profileName: string,
+    private log: (msg: string) => void = () => {},
   ) {}
 
   async enter(): Promise<void> {
     if (this.inProfile) return;
     const id = this.deviceId();
-    if (!id) return;
+    if (!id) {
+      this.log("profile enter skipped: no device");
+      return;
+    }
     this.inProfile = true;
     try {
       await this.api.switchToProfile(id, this.profileName);
-    } catch {
+      this.log(`profile enter ok: ${this.profileName} on ${id}`);
+    } catch (e) {
       // 전환 실패(예: 번들 안 된 프로파일은 SDK가 타임아웃) → 상태 되돌려
       // 다음 기회에 재시도 가능하게 하고, 미처리 거부로 프로세스가 죽지 않게 한다.
       this.inProfile = false;
+      this.log(`profile enter FAILED: ${this.profileName} on ${id}: ${String(e)}`);
     }
   }
 

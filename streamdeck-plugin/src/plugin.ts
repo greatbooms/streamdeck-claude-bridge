@@ -6,7 +6,7 @@ import { AnswerAction } from "./answer-action.js";
 import { CancelAction } from "./cancel-action.js";
 import { LogoAction } from "./logo-action.js";
 
-const PROFILE = "Claude Answers";
+const PROFILE = "Claude Bridge";
 const URL = "ws://127.0.0.1:8787/ws";
 
 // SD 번들 Node 20 에는 전역 WebSocket 이 없으므로 'ws' 기반 팩토리를 주입한다.
@@ -23,6 +23,7 @@ const switcher = new ProfileSwitcher(
   { switchToProfile: (id, name) => streamDeck.profiles.switchToProfile(id, name) },
   firstDeviceId,
   PROFILE,
+  (m) => streamDeck.logger.info(m),
 );
 
 const answerAction = new AnswerAction(client);
