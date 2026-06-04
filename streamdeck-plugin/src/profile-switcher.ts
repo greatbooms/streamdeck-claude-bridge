@@ -16,7 +16,13 @@ export class ProfileSwitcher {
     const id = this.deviceId();
     if (!id) return;
     this.inProfile = true;
-    await this.api.switchToProfile(id, this.profileName);
+    try {
+      await this.api.switchToProfile(id, this.profileName);
+    } catch {
+      // 전환 실패(예: 번들 안 된 프로파일은 SDK가 타임아웃) → 상태 되돌려
+      // 다음 기회에 재시도 가능하게 하고, 미처리 거부로 프로세스가 죽지 않게 한다.
+      this.inProfile = false;
+    }
   }
 
   async leave(): Promise<void> {
@@ -24,6 +30,10 @@ export class ProfileSwitcher {
     this.inProfile = false;
     const id = this.deviceId();
     if (!id) return;
-    await this.api.switchToProfile(id);
+    try {
+      await this.api.switchToProfile(id); // 인자 없음 → 직전 프로파일 복귀
+    } catch {
+      // 복귀 실패는 무시(미처리 거부 방지)
+    }
   }
 }
