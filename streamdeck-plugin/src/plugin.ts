@@ -1,5 +1,6 @@
 import streamDeck from "@elgato/streamdeck";
-import { BridgeClient } from "./bridge-client.js";
+import WebSocket from "ws";
+import { BridgeClient, type WebSocketLike } from "./bridge-client.js";
 import { ProfileSwitcher } from "./profile-switcher.js";
 import { AnswerAction } from "./answer-action.js";
 import { CancelAction } from "./cancel-action.js";
@@ -7,7 +8,8 @@ import { CancelAction } from "./cancel-action.js";
 const PROFILE = "Claude Answers";
 const URL = "ws://127.0.0.1:8787/ws";
 
-const client = new BridgeClient(URL);
+// SD 번들 Node 20 에는 전역 WebSocket 이 없으므로 'ws' 기반 팩토리를 주입한다.
+const client = new BridgeClient(URL, (u) => new WebSocket(u) as unknown as WebSocketLike);
 
 function firstDeviceId(): string | null {
   for (const d of streamDeck.devices) {

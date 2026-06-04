@@ -22,7 +22,13 @@ export class BridgeClient {
 
   constructor(
     private url: string,
-    private wsFactory: WsFactory = (u) => new WebSocket(u) as unknown as WebSocketLike,
+    private wsFactory: WsFactory = (u) => {
+      // 기본값은 전역 WebSocket(테스트용 Node 24+). 프로덕션(SD 번들 Node 20)에는
+      // 전역 WebSocket 이 없으므로 plugin.ts 가 'ws' 기반 팩토리를 주입한다.
+      const WS = (globalThis as { WebSocket?: new (u: string) => unknown }).WebSocket;
+      if (!WS) throw new Error("no global WebSocket; inject a wsFactory");
+      return new WS(u) as WebSocketLike;
+    },
     private scheduleReconnect: Scheduler = (fn) => { setTimeout(fn, 1000); },
   ) {}
 

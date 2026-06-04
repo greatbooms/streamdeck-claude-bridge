@@ -15,6 +15,7 @@ export default {
   plugins: [
     typescript({ tsconfig: "./tsconfig.json", noEmitOnError: true }),
     nodeResolve({ exportConditions: ["node"], preferBuiltins: true }),
-    commonjs(),
+    // 'ws' 를 번들에 포함. 선택적 네이티브 가속 모듈은 무시(ws 가 런타임에 폴백).
+    commonjs({ ignore: ["bufferutil", "utf-8-validate"] }),
   ],
 };
