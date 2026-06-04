@@ -32,14 +32,21 @@ export class ProfileSwitcher {
   }
 
   async leave(): Promise<void> {
-    if (!this.inProfile) return;
+    if (!this.inProfile) {
+      this.log("profile leave skipped: not in profile");
+      return;
+    }
     this.inProfile = false;
     const id = this.deviceId();
-    if (!id) return;
+    if (!id) {
+      this.log("profile leave: no device");
+      return;
+    }
     try {
       await this.api.switchToProfile(id); // 인자 없음 → 직전 프로파일 복귀
-    } catch {
-      // 복귀 실패는 무시(미처리 거부 방지)
+      this.log(`profile leave ok (return to previous) on ${id}`);
+    } catch (e) {
+      this.log(`profile leave FAILED on ${id}: ${String(e)}`);
     }
   }
 }

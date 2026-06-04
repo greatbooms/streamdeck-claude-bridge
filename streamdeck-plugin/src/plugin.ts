@@ -13,10 +13,15 @@ const URL = "ws://127.0.0.1:8787/ws";
 const client = new BridgeClient(URL, (u) => new WebSocket(u) as unknown as WebSocketLike);
 
 function firstDeviceId(): string | null {
+  // 번들 프로파일은 DeviceType 0(표준 Stream Deck)용이므로 그 타입의 연결된 기기를 우선 선택.
+  // (Mobile/가상 데크 등 다른 타입을 고르면 switchToProfile 이 타임아웃됨.)
+  let fallback: string | null = null;
   for (const d of streamDeck.devices) {
-    if (d.isConnected) return d.id;
+    if (!d.isConnected) continue;
+    if (fallback === null) fallback = d.id;
+    if (Number(d.type) === 0) return d.id;
   }
-  return null;
+  return fallback;
 }
 
 const switcher = new ProfileSwitcher(
