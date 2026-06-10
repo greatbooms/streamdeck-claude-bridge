@@ -27,6 +27,10 @@ export class QuestionState {
     return this.active()?.session ?? null;
   }
 
+  questionText(): string | null {
+    return this.active()?.question ?? null;
+  }
+
   labelFor(index: number): string | null {
     const a = this.active();
     if (!a) return null;

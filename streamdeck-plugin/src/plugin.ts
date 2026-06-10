@@ -5,6 +5,7 @@ import { ProfileSwitcher } from "./profile-switcher.js";
 import { AnswerAction } from "./answer-action.js";
 import { CancelAction } from "./cancel-action.js";
 import { LogoAction } from "./logo-action.js";
+import { QuestionAction } from "./question-action.js";
 
 const PROFILE = "Claude Bridge";
 const URL = "ws://127.0.0.1:8787/ws";
@@ -33,16 +34,19 @@ const switcher = new ProfileSwitcher(
 
 const answerAction = new AnswerAction(client);
 const cancelAction = new CancelAction(client);
+const questionAction = new QuestionAction(client);
 
 client.onChange(() => {
   const active = client.state.activeSession();
   if (active) void switcher.enter();
   else void switcher.leave();
   void answerAction.refreshAll();
+  void questionAction.refreshAll();
 });
 
 streamDeck.actions.registerAction(answerAction);
 streamDeck.actions.registerAction(cancelAction);
+streamDeck.actions.registerAction(questionAction);
 streamDeck.actions.registerAction(new LogoAction());
 streamDeck.connect();
 client.start();

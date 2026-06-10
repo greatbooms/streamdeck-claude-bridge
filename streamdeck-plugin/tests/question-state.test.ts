@@ -54,6 +54,13 @@ describe("QuestionState", () => {
     expect(s.labelFor(4)).toBeNull();
   });
 
+  it("questionText returns active question body, else null", () => {
+    const s = new QuestionState();
+    expect(s.questionText()).toBeNull();
+    s.applyAdded(q("U1"));
+    expect(s.questionText()).toBe("q");
+  });
+
   it("isMultiSelect reflects active question", () => {
     const s = new QuestionState();
     s.applyAdded(q("U1", ["A"], true));

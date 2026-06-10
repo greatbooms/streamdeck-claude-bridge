@@ -34,12 +34,20 @@ Row2:  Cancel ·     ·     ·   [✻ CLAUDE CODE]
 
 - 표시 전용. 눌러도 동작 없음.
 - 각 키는 `onWillAppear`의 `coordinates.column`(0~4)으로 자기 칸 위치를 안다.
-- 활성 질문의 **본문 `question`** 을 단어 단위로 줄바꿈한 뒤, 칸별로 분배한다:
-  칸 0이 처음 N줄, 칸 1이 다음 N줄 … 식으로 **왼→오, 위→아래 순서로 이어서** 읽힌다.
-- 전체가 5칸(= 5 × N줄)에 다 안 들어가면 마지막 칸 마지막 줄 끝에 `…`.
+- 활성 질문의 **본문 `question`** 을 **단어 단위로 5칸에 균등 분배**한다:
+  각 칸은 누적 글자 폭이 고르도록 단어 묶음을 받고, 칸 안에서만 줄바꿈한다.
+  칸을 **왼→오로 읽으면 원문 단어 순서가 그대로 이어진다**.
+- **각 칸은 완전한 단어만** 담으므로 키 경계에서 글자가 잘리지 않는다(읽기 우선).
+- 칸 글자 크기 FS=30, 칸당 최대 3줄, 세로 가운데 정렬. 칸 안에서 넘치면 마지막 줄 끝에 `…`.
+  (칸 폭보다 긴 단어 하나는 안전장치로 글자 단위 분할.)
 - 활성 질문이 바뀌면 `refreshAll()`로 5칸을 모두 다시 그린다
   (현재 AnswerAction이 쓰는 방식과 동일하게 `plugin.ts`의 `client.onChange`에 연결).
 - 활성 질문이 없으면 텍스트 없는 idle 배경만 렌더.
+
+> 설계 변천(구현 중 합의): 처음엔 (a) 칸별 세로 채우기 → (b) 5칸을 가로지르는
+> 연속 한 줄(translate 슬라이스)을 시도했으나, Stream Deck SVG 렌더러가 `textLength`를
+> 무시해 5번째 칸이 비고 **키 물리적 틈에서 글자가 반쪽 잘려** 가독성이 나빴다.
+> 최종적으로 **단어 단위 균등 분배**로 정착 — 5칸이 항상 채워지고 글자 잘림이 없다.
 
 ### LogoAction
 
@@ -50,9 +58,8 @@ Row2:  Cancel ·     ·     ·   [✻ CLAUDE CODE]
 ## 모듈 구성
 
 - `src/question-image.ts` (신규): 본문 문자열 + 칸 인덱스 + 총 칸 수 →
-  해당 칸의 SVG/data URI. 줄바꿈은 `answer-image.ts`의 로직을 일반화해 재사용
-  (단어 단위가 아닌 글자 폭 기반 그리디 줄바꿈, 단 칸 분배를 위해 줄 수 제한 없이
-  먼저 전부 줄바꿈한 뒤 칸 크기로 슬라이스).
+  해당 칸의 SVG/data URI. `distributeWords`(단어 균등 분배) + `wrapWords`(단어 보존
+  줄바꿈, 긴 단어는 글자 분할 fallback) + `cellSvg`(세로 가운데, 좌측 정렬) 조합.
 - `src/question-action.ts` (신규): 위 표시 액션. `BridgeClient` 주입, `refreshAll()` 제공.
 - `src/question-state.ts`: 활성 질문 본문 접근자 `questionText()` 추가.
 - `src/logo-action.ts`: 단일 아이콘+이름 타일 렌더로 변경.
@@ -62,8 +69,8 @@ Row2:  Cancel ·     ·     ·   [✻ CLAUDE CODE]
 
 ## 테스트
 
-- `tests/question-image.test.ts`: 칸 분배(슬라이스) / 오버플로 `…` / idle(빈 본문) /
-  data URI 포맷 검증.
+- `tests/question-image.test.ts`: 단어 균등 분배(순서 보존·5칸 사용) / 단어 보존 줄바꿈 /
+  긴 단어 글자 분할 / 오버플로 `…` / idle(빈 본문) / data URI 포맷 검증.
 - 기존 테스트 전부 통과 유지. rollup 빌드 성공.
 
 ## 비목표 (YAGNI)
