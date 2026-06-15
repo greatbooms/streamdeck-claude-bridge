@@ -5,7 +5,8 @@
 set -euo pipefail
 
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PY="$(command -v python3)"
+# Prefer the project venv (its Python meets the 3.10+ requirement); fall back to system python3.
+if [ -x "$PROJ/.venv/bin/python" ]; then PY="$PROJ/.venv/bin/python"; else PY="$(command -v python3)"; fi
 PORT="${BRIDGE_PORT:-8787}"
 LABEL="com.streamdeck-claude-bridge"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
