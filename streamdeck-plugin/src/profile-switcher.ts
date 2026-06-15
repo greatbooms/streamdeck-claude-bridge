@@ -3,7 +3,7 @@ export interface ProfileApi {
 }
 
 export class ProfileSwitcher {
-  private inProfile = false;
+  private currentProfile: string | null = null;
 
   constructor(
     private api: ProfileApi,
@@ -12,31 +12,32 @@ export class ProfileSwitcher {
     private log: (msg: string) => void = () => {},
   ) {}
 
-  async enter(): Promise<void> {
-    if (this.inProfile) return;
+  async enter(profileName: string = this.profileName): Promise<void> {
+    if (this.currentProfile === profileName) return;
     const id = this.deviceId();
     if (!id) {
       this.log("profile enter skipped: no device");
       return;
     }
-    this.inProfile = true;
+    const previousProfile = this.currentProfile;
+    this.currentProfile = profileName;
     try {
-      await this.api.switchToProfile(id, this.profileName);
-      this.log(`profile enter ok: ${this.profileName} on ${id}`);
+      await this.api.switchToProfile(id, profileName);
+      this.log(`profile enter ok: ${profileName} on ${id}`);
     } catch (e) {
       // 전환 실패(예: 번들 안 된 프로파일은 SDK가 타임아웃) → 상태 되돌려
       // 다음 기회에 재시도 가능하게 하고, 미처리 거부로 프로세스가 죽지 않게 한다.
-      this.inProfile = false;
-      this.log(`profile enter FAILED: ${this.profileName} on ${id}: ${String(e)}`);
+      this.currentProfile = previousProfile;
+      this.log(`profile enter FAILED: ${profileName} on ${id}: ${String(e)}`);
     }
   }
 
   async leave(): Promise<void> {
-    if (!this.inProfile) {
+    if (this.currentProfile === null) {
       this.log("profile leave skipped: not in profile");
       return;
     }
-    this.inProfile = false;
+    this.currentProfile = null;
     const id = this.deviceId();
     if (!id) {
       this.log("profile leave: no device");

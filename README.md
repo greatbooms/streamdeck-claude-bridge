@@ -1,7 +1,7 @@
 # streamdeck-claude-bridge
 
-클로드코드의 질문(AskUserQuestion)을 스트림덱으로 미러링하고,
-스트림덱 버튼으로 iTerm2 세션에 답변을 주입하는 브릿지 프로젝트.
+클로드코드의 질문(AskUserQuestion)과 Codex CLI의 권한 요청(PermissionRequest)을
+스트림덱으로 미러링하고, 스트림덱 버튼으로 iTerm2 세션에 답변/승인을 주입하는 브릿지 프로젝트.
 
 > **새 컴퓨터에서 처음부터 설치/실행하려면 → [SETUP.md](SETUP.md)** (브릿지·글로벌 훅·플러그인·자동시작·포터빌리티 전부 정리).
 
@@ -10,10 +10,12 @@
 ```
 [클로드 질문]
   └─(PreToolUse 훅, AskUserQuestion)→ 선택지 + ITERM_SESSION_ID 를 브릿지로 전송
+[Codex 권한 요청]
+  └─(PermissionRequest 훅)→ 승인 요청 + ITERM_SESSION_ID 를 브릿지로 전송
 [로컬 브릿지 서버]
-  └─(WebSocket)→ 스트림덱 플러그인 (전용 프로파일 전환, 버튼에 질문/번호 표시)
+  └─(WebSocket)→ 스트림덱 플러그인 (Claude/Codex 별도 프로파일 전환)
 [사용자가 스트림덱 버튼 N 누름]
-  └─ 브릿지 → iTerm2 Python API 로 해당 세션에 방향키+Enter 주입 → 답변 선택
+  └─ 브릿지 → iTerm2 Python API 로 해당 세션에 방향키+Enter 주입 → 답변/승인 선택
 ```
 
 ## 진행 단계
@@ -51,10 +53,9 @@
   - 버튼 콜백 → 서버가 해당 세션에 down×(N-1)+Enter 주입 (단일선택), multiSelect 는 알림 전용
   - iTerm2 Python API 연결 상시 유지(전용 스레드, 한 connection 으로 모든 세션 제어)
 - [x] **스트림덱 커스텀 플러그인** (구현 완료 → `streamdeck-plugin/`, 아래 "스트림덱 플러그인" 참고)
-  - TS + `@elgato/streamdeck` SDK. 질문 오면 "Claude Answers" 프로파일로 자동 전환 →
-    버튼으로 답 → 직전 프로파일 복귀. 브릿지 WS 프로토콜 그대로 소비, 19개 단위 테스트.
-  - 남은 수동 단계: SD 앱에서 "Claude Answers" 프로파일을 만들어 export(`.streamDeckProfile`)하고
-    매니페스트 `Profiles` 에 선언해야 자동 전환이 실제로 동작함(SDK 제약).
+  - TS + `@elgato/streamdeck` SDK. Claude 질문은 "Claude Bridge", Codex 권한 요청은
+    "Codex Bridge" 프로파일로 자동 전환 → 버튼으로 답/승인 → 직전 프로파일 복귀.
+    브릿지 WS 프로토콜 그대로 소비.
 
 ## 브릿지 서버 실행
 
@@ -90,8 +91,8 @@ npx @elgato/cli link com.shinsanghoon.claude-bridge.sdPlugin
 npx @elgato/cli restart com.shinsanghoon.claude-bridge
 ```
 
-설치 시 `streamdeck` 앱이 번들 **"Claude Bridge"** 프로파일(배너+Answer×N+Cancel 사전구성)을
-기기에 설치할지 묻는다 → "프로필 설치". 별도 버튼 구성 불필요.
+설치 시 `streamdeck` 앱이 번들 **"Claude Bridge"** / **"Codex Bridge"** 프로파일을
+기기에 설치할지 묻는다 → 둘 다 "프로필 설치". 별도 버튼 구성 불필요.
 
 ### 실사용 설정 (중요)
 
@@ -99,12 +100,53 @@ npx @elgato/cli restart com.shinsanghoon.claude-bridge
    `PreToolUse`/`PostToolUse`(matcher `AskUserQuestion`)를 이 repo 의 `.claude/hooks/on-question.sh`,
    `on-resolved.sh` **절대경로**로 등록. (프로젝트-로컬 훅은 그 폴더 세션만 발화.)
    적용은 **세션 재시작** 후.
-2. **브릿지 상시 실행** — `python3 -m bridge` (또는 `bash scripts/install-launchd.sh` 로 자동 시작).
-3. 평소엔 **본인 작업 프로파일**에 둔다.
+2. **Codex 글로벌 훅** — Codex CLI 권한 요청도 미러링하려면 `~/.codex/hooks.json` 에
+   `PermissionRequest` 훅을 이 repo 의 `.codex/hooks/on-permission-request.sh` **절대경로**로 등록.
+   `PostToolUse`/`Stop` 에 `.codex/hooks/on-resolved.sh` 를 함께 등록하면 터미널에서 직접 답한
+   경우도 보류 표시가 정리된다. 새 Codex 세션에서 `/hooks` 로 훅을 trust 해야 한다.
+3. **브릿지 상시 실행** — `python3 -m bridge` (또는 `bash scripts/install-launchd.sh` 로 자동 시작).
+4. 평소엔 **본인 작업 프로파일**에 둔다.
 
-동작: 클로드 질문이 오면 스트림덱(표준 SD, DeviceType 0)이 **"Claude Bridge"** 프로파일로 자동 전환되고,
+동작: 클로드 질문은 **"Claude Bridge"**, Codex 권한 요청은 **"Codex Bridge"** 프로파일로 자동 전환되고,
 버튼으로 답하면 해당 iTerm2 세션에 주입된 뒤 **직전(작업) 프로파일로 복귀**한다.
 multiSelect 질문은 알림 전용(터미널에서 직접 선택).
+
+Codex 훅 예시:
+
+```json
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "REPO경로/.codex/hooks/on-permission-request.sh",
+            "timeout": 10,
+            "statusMessage": "Mirroring Codex permission"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "REPO경로/.codex/hooks/on-resolved.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "REPO경로/.codex/hooks/on-resolved.sh", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ## scripts
 

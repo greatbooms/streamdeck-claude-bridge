@@ -4,6 +4,16 @@
 const BG = "#1a1714";
 const CORAL = "#D97757";
 const TEXT = "#F1E9DD";
+const CODEX_BG = "#0B0F14";
+const CODEX_GREEN = "#10A37F";
+const CODEX_TEXT = "#E6EDF3";
+
+type Theme = "claude" | "codex";
+
+function colors(theme: Theme): { bg: string; accent: string; text: string } {
+  if (theme === "codex") return { bg: CODEX_BG, accent: CODEX_GREEN, text: CODEX_TEXT };
+  return { bg: BG, accent: CORAL, text: TEXT };
+}
 
 function charUnits(ch: string): number {
   // ASCII 는 좁게, 한글 등은 넓게 (줄바꿈 폭 추정용)
@@ -52,13 +62,14 @@ function escapeXml(s: string): string {
 }
 
 /** 버튼 SVG 문자열. label 이 비면 텍스트 없는 idle 배경만. */
-export function answerSvg(label: string | null): string {
+export function answerSvg(label: string | null, theme: Theme = "claude"): string {
   const W = 144;
   const H = 144;
+  const c = colors(theme);
   const head =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">` +
-    `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="16" fill="${BG}"/>` +
-    `<rect x="14" y="${H - 18}" width="${W - 28}" height="6" rx="3" fill="${CORAL}"/>`;
+    `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="16" fill="${c.bg}"/>` +
+    `<rect x="14" y="${H - 18}" width="${W - 28}" height="6" rx="3" fill="${c.accent}"/>`;
   let body = "";
   const text = (label ?? "").trim();
   if (text) {
@@ -73,7 +84,7 @@ export function answerSvg(label: string | null): string {
         (ln, i) =>
           `<text x="${x}" y="${y0 + i * lh}" text-anchor="start" ` +
           `font-family="Helvetica,Arial,sans-serif" font-size="${fs}" font-weight="600" ` +
-          `fill="${TEXT}">${escapeXml(ln)}</text>`,
+          `fill="${c.text}">${escapeXml(ln)}</text>`,
       )
       .join("");
   }
@@ -83,5 +94,10 @@ export function answerSvg(label: string | null): string {
 /** Stream Deck setImage 용 data URI (한글 안전하게 Buffer base64). */
 export function answerImageDataUri(label: string | null): string {
   const svg = answerSvg(label);
+  return "data:image/svg+xml;base64," + Buffer.from(svg, "utf8").toString("base64");
+}
+
+export function themedAnswerImageDataUri(label: string | null, theme: Theme): string {
+  const svg = answerSvg(label, theme);
   return "data:image/svg+xml;base64," + Buffer.from(svg, "utf8").toString("base64");
 }

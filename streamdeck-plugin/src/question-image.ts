@@ -5,6 +5,16 @@
 
 const BG = "#1a1714";
 const TEXT = "#F1E9DD";
+const CODEX_BG = "#0B0F14";
+const CODEX_GREEN = "#10A37F";
+const CODEX_TEXT = "#E6EDF3";
+
+type Theme = "claude" | "codex";
+
+function colors(theme: Theme): { bg: string; accent: string; text: string } {
+  if (theme === "codex") return { bg: CODEX_BG, accent: CODEX_GREEN, text: CODEX_TEXT };
+  return { bg: BG, accent: "", text: TEXT };
+}
 
 const CELL_W = 144;
 const FS = 30; // 글자 크기
@@ -104,12 +114,14 @@ function escapeXml(s: string): string {
 }
 
 /** 칸 하나의 SVG. 줄들을 세로 가운데 정렬해 왼쪽 정렬로 그린다. lines 가 비면 idle 배경만. */
-export function cellSvg(lines: string[]): string {
+export function cellSvg(lines: string[], theme: Theme = "claude"): string {
   const W = CELL_W;
   const H = CELL_W;
+  const c = colors(theme);
   const head =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">` +
-    `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="16" fill="${BG}"/>`;
+    `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="16" fill="${c.bg}"/>` +
+    (c.accent ? `<rect x="14" y="12" width="${W - 28}" height="6" rx="3" fill="${c.accent}"/>` : "");
   let body = "";
   if (lines.length > 0) {
     const n = lines.length;
@@ -119,7 +131,7 @@ export function cellSvg(lines: string[]): string {
         (ln, i) =>
           `<text x="${LEFT_PAD}" y="${Math.round(firstBaseline + i * LH)}" text-anchor="start" ` +
           `font-family="Helvetica,Arial,sans-serif" font-size="${FS}" font-weight="600" ` +
-          `fill="${TEXT}">${escapeXml(ln)}</text>`,
+          `fill="${c.text}">${escapeXml(ln)}</text>`,
       )
       .join("");
   }
@@ -127,7 +139,12 @@ export function cellSvg(lines: string[]): string {
 }
 
 /** Stream Deck setImage 용 data URI. */
-export function questionImageDataUri(text: string, cellIndex: number, totalCells: number): string {
-  const svg = cellSvg(linesForCell(text, cellIndex, totalCells));
+export function questionImageDataUri(
+  text: string,
+  cellIndex: number,
+  totalCells: number,
+  theme: Theme = "claude",
+): string {
+  const svg = cellSvg(linesForCell(text, cellIndex, totalCells), theme);
   return "data:image/svg+xml;base64," + Buffer.from(svg, "utf8").toString("base64");
 }

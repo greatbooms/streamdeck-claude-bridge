@@ -56,6 +56,13 @@ describe("question-image (word distribution across cells)", () => {
     expect(svg).toContain("메인");
   });
 
+  it("cellSvg can render Codex-themed permission text", () => {
+    const svg = cellSvg(["CODEX", "PERMISSION"], "codex");
+    expect(svg).toContain("#0B0F14");
+    expect(svg).toContain("#10A37F");
+    expect(svg).toContain("PERMISSION");
+  });
+
   it("linesForCell returns this cell's wrapped words", () => {
     const text = "이 변경을 메인 브랜치에 머지할까요 아니면 새로 PR 을 만들어서 리뷰를 받을까요?";
     expect(linesForCell(text, 0, 5).join(" ")).toContain("이");

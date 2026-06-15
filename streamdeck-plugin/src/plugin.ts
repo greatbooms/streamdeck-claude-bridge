@@ -6,8 +6,13 @@ import { AnswerAction } from "./answer-action.js";
 import { CancelAction } from "./cancel-action.js";
 import { LogoAction } from "./logo-action.js";
 import { QuestionAction } from "./question-action.js";
+import { CodexLogoAction } from "./codex-logo-action.js";
 
-const PROFILE = "Claude Bridge";
+const DEFAULT_PROFILE = "Claude Bridge";
+const PROFILE_BY_SOURCE = {
+  claude: "Claude Bridge",
+  codex: "Codex Bridge",
+} as const;
 const URL = "ws://127.0.0.1:8787/ws";
 
 // SD 번들 Node 20 에는 전역 WebSocket 이 없으므로 'ws' 기반 팩토리를 주입한다.
@@ -28,7 +33,7 @@ function firstDeviceId(): string | null {
 const switcher = new ProfileSwitcher(
   { switchToProfile: (id, name) => streamDeck.profiles.switchToProfile(id, name) },
   firstDeviceId,
-  PROFILE,
+  DEFAULT_PROFILE,
   (m) => streamDeck.logger.info(m),
 );
 
@@ -37,8 +42,8 @@ const cancelAction = new CancelAction(client);
 const questionAction = new QuestionAction(client);
 
 client.onChange(() => {
-  const active = client.state.activeSession();
-  if (active) void switcher.enter();
+  const active = client.state.active();
+  if (active) void switcher.enter(PROFILE_BY_SOURCE[active.source] ?? DEFAULT_PROFILE);
   else void switcher.leave();
   void answerAction.refreshAll();
   void questionAction.refreshAll();
@@ -48,5 +53,6 @@ streamDeck.actions.registerAction(answerAction);
 streamDeck.actions.registerAction(cancelAction);
 streamDeck.actions.registerAction(questionAction);
 streamDeck.actions.registerAction(new LogoAction());
+streamDeck.actions.registerAction(new CodexLogoAction());
 streamDeck.connect();
 client.start();

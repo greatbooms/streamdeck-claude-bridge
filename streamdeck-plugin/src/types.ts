@@ -1,7 +1,11 @@
 export interface Option {
   label: string;
   description: string;
+  action?: string;
 }
+
+export type QuestionSource = "claude" | "codex";
+export type QuestionKind = "question" | "permission";
 
 export interface Question {
   session: string;
@@ -9,6 +13,10 @@ export interface Question {
   question: string;
   multiSelect: boolean;
   claude_session_id: string;
+  source: QuestionSource;
+  kind: QuestionKind;
+  request_id?: string;
+  tool_name?: string;
   options: Option[];
 }
 

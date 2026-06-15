@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "build": "rollup -c"
+    "build": "node scripts/build-once.mjs"
   },
   "dependencies": {
     "@elgato/streamdeck": "^2.1.0",

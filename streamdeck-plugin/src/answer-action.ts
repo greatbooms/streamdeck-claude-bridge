@@ -5,7 +5,7 @@ import {
 import type { JsonValue } from "@elgato/utils";
 import type { KeyAction } from "@elgato/streamdeck";
 import type { BridgeClient } from "./bridge-client.js";
-import { answerImageDataUri } from "./answer-image.js";
+import { themedAnswerImageDataUri } from "./answer-image.js";
 
 interface AnswerSettings {
   optionIndex?: number;
@@ -47,7 +47,8 @@ export class AnswerAction extends SingletonAction<AnswerSettings> {
   private async refresh(a: KeyAction<AnswerSettings>, settings: AnswerSettings): Promise<void> {
     const index = Number(settings.optionIndex ?? 0) || 0;
     const label = index >= 1 ? this.client.state.labelFor(index) : null;
+    const theme = this.client.state.activeSource() === "codex" ? "codex" : "claude";
     // 좌측 정렬 + 자동 줄바꿈을 위해 제목 대신 SVG 이미지로 렌더한다.
-    await a.setImage(answerImageDataUri(label));
+    await a.setImage(themedAnswerImageDataUri(label, theme));
   }
 }

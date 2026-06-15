@@ -36,6 +36,17 @@ describe("ProfileSwitcher", () => {
     ]);
   });
 
+  it("can switch to a requested profile name", async () => {
+    const { sw, calls } = make();
+    await sw.enter("Codex Bridge");
+    await sw.enter("Codex Bridge");
+    await sw.enter("Claude Bridge");
+    expect(calls).toEqual([
+      ["DEV1", "Codex Bridge"],
+      ["DEV1", "Claude Bridge"],
+    ]);
+  });
+
   it("no device → no switch, but state still tracked", async () => {
     const { sw, calls } = make(null);
     await sw.enter();

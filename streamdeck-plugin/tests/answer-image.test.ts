@@ -25,6 +25,13 @@ describe("answer-image", () => {
     expect(svg).toContain('x="13"'); // 왼쪽 패딩에서 시작
   });
 
+  it("answerSvg can render Codex-themed approval buttons", () => {
+    const svg = answerSvg("Approve", "codex");
+    expect(svg).toContain("#0B0F14");
+    expect(svg).toContain("#10A37F");
+    expect(svg).toContain("Approve");
+  });
+
   it("data URI is base64 svg", () => {
     expect(answerImageDataUri("차")).toMatch(/^data:image\/svg\+xml;base64,/);
   });

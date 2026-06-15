@@ -2,9 +2,15 @@ import { describe, it, expect } from "vitest";
 import { QuestionState } from "../src/question-state.js";
 import type { Question } from "../src/types.js";
 
-function q(session: string, opts: string[] = ["A"], multiSelect = false): Question {
+function q(
+  session: string,
+  opts: string[] = ["A"],
+  multiSelect = false,
+  source: Question["source"] = "claude",
+): Question {
   return {
     session, header: "h", question: "q", multiSelect, claude_session_id: "c",
+    source, kind: source === "codex" ? "permission" : "question",
     options: opts.map((label) => ({ label, description: "" })),
   };
 }
@@ -65,5 +71,14 @@ describe("QuestionState", () => {
     const s = new QuestionState();
     s.applyAdded(q("U1", ["A"], true));
     expect(s.isMultiSelect()).toBe(true);
+  });
+
+  it("activeSource returns the active item's source", () => {
+    const s = new QuestionState();
+    expect(s.activeSource()).toBeNull();
+    s.applyAdded(q("U1", ["A"], false, "claude"));
+    expect(s.activeSource()).toBe("claude");
+    s.applyAdded(q("U2", ["Approve"], false, "codex"));
+    expect(s.activeSource()).toBe("codex");
   });
 });

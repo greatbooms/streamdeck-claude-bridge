@@ -27,8 +27,13 @@ function handle(msg) {
 
 function notify(q) {
   if (window.Notification && Notification.permission === 'granted') {
-    new Notification('Claude 질문', { body: `[${q.header}] ${q.question}` });
+    const title = q.source === 'codex' ? 'Codex 권한 요청' : 'Claude 질문';
+    new Notification(title, { body: `[${q.header}] ${q.question}` });
   }
+}
+
+function sourceLabel(q) {
+  return q.source === 'codex' ? 'Codex' : 'Claude';
 }
 
 function render() {
@@ -41,7 +46,7 @@ function render() {
   for (const q of pending.values()) {
     const card = document.createElement('div'); card.className = 'card';
     const h = document.createElement('div'); h.className = 'q';
-    h.textContent = `[${q.header}] ${q.question}`;
+    h.textContent = `[${sourceLabel(q)} · ${q.header}] ${q.question}`;
     card.appendChild(h);
     if (q.multiSelect) {
       const note = document.createElement('div'); note.className = 'note';

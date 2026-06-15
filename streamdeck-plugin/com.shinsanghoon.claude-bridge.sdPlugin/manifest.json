@@ -36,10 +36,19 @@
       "Tooltip": "Claude Code 로고 (표시 전용 · 첫 줄 배너용)",
       "Controllers": ["Keypad"],
       "States": [{ "Image": "imgs/actions/logo/key" }]
+    },
+    {
+      "Name": "Codex Logo",
+      "UUID": "com.shinsanghoon.claude-bridge.codex-logo",
+      "Icon": "imgs/actions/logo/icon",
+      "Tooltip": "Codex 권한 승인 로고 (표시 전용)",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/actions/logo/key" }]
     }
   ],
   "Profiles": [
-    { "Name": "Claude Bridge", "DeviceType": 0, "Readonly": false }
+    { "Name": "Claude Bridge", "DeviceType": 0, "Readonly": false },
+    { "Name": "Codex Bridge", "DeviceType": 0, "Readonly": false }
   ],
   "Category": "Claude Bridge",
   "CategoryIcon": "imgs/plugin/category-icon",

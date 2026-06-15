@@ -4,7 +4,7 @@ from aiohttp import web
 
 from bridge.state import PendingStore
 from bridge.ws import Hub, make_ws_handler
-from bridge.hooks_api import make_question_handler, make_resolved_handler
+from bridge.hooks_api import make_question_handler, make_resolved_handler, make_codex_permission_handler
 from bridge.injector import ItermInjector
 
 WEBCLIENT_DIR = Path(__file__).resolve().parent.parent / "webclient"
@@ -17,6 +17,7 @@ async def _index(request):
 def make_app(store, hub, injector) -> web.Application:
     app = web.Application()
     app.router.add_post("/hook/question", make_question_handler(store, hub))
+    app.router.add_post("/hook/codex/permission", make_codex_permission_handler(store, hub))
     app.router.add_post("/hook/resolved", make_resolved_handler(store, hub))
     app.router.add_get("/ws", make_ws_handler(store, hub, injector))
     app.router.add_get("/", _index)

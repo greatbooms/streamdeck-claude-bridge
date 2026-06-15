@@ -27,6 +27,10 @@ export class QuestionState {
     return this.active()?.session ?? null;
   }
 
+  activeSource(): Question["source"] | null {
+    return this.active()?.source ?? null;
+  }
+
   questionText(): string | null {
     return this.active()?.question ?? null;
   }

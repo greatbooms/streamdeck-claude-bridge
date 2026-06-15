@@ -48,10 +48,11 @@ export class QuestionAction extends SingletonAction<QuestionSettings> {
 
   private async render(a: KeyAction<QuestionSettings>, column: number): Promise<void> {
     const text = this.client.state.questionText();
+    const theme = this.client.state.activeSource() === "codex" ? "codex" : "claude";
     if (!text) {
-      await a.setImage(questionImageDataUri("", column, TOTAL_CELLS));
+      await a.setImage(questionImageDataUri("", column, TOTAL_CELLS, theme));
       return;
     }
-    await a.setImage(questionImageDataUri(text, column, TOTAL_CELLS));
+    await a.setImage(questionImageDataUri(text, column, TOTAL_CELLS, theme));
   }
 }
