@@ -7,12 +7,9 @@ import { CancelAction } from "./cancel-action.js";
 import { LogoAction } from "./logo-action.js";
 import { QuestionAction } from "./question-action.js";
 import { CodexLogoAction } from "./codex-logo-action.js";
+import { syncDeckState } from "./plugin-sync.js";
 
 const DEFAULT_PROFILE = "Claude Bridge";
-const PROFILE_BY_SOURCE = {
-  claude: "Claude Bridge",
-  codex: "Codex Bridge",
-} as const;
 const URL = "ws://127.0.0.1:8787/ws";
 
 // SD 번들 Node 20 에는 전역 WebSocket 이 없으므로 'ws' 기반 팩토리를 주입한다.
@@ -42,11 +39,13 @@ const cancelAction = new CancelAction(client);
 const questionAction = new QuestionAction(client);
 
 client.onChange(() => {
-  const active = client.state.active();
-  if (active) void switcher.enter(PROFILE_BY_SOURCE[active.source] ?? DEFAULT_PROFILE);
-  else void switcher.leave();
-  void answerAction.refreshAll();
-  void questionAction.refreshAll();
+  void syncDeckState({
+    active: client.state.active(),
+    switcher,
+    answerAction,
+    questionAction,
+    log: (m) => streamDeck.logger.error(m),
+  });
 });
 
 streamDeck.actions.registerAction(answerAction);
