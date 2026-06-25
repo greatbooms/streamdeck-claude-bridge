@@ -25,7 +25,6 @@ export function parseLauncherEditorRequest(payload: unknown): LauncherEditorRequ
   if (obj.type === "saveProjectPreferences") {
     if (typeof obj.projectPath !== "string" || !obj.projectPath.trim()) return null;
     if (!Array.isArray(obj.favorites) || !Array.isArray(obj.npmOrder)) return null;
-    if (!isStringArray(obj.favorites) || !isStringArray(obj.npmOrder)) return null;
     return {
       type: "saveProjectPreferences",
       projectPath: obj.projectPath.trim(),
@@ -37,12 +36,9 @@ export function parseLauncherEditorRequest(payload: unknown): LauncherEditorRequ
   return null;
 }
 
-function isStringArray(values: unknown[]): values is string[] {
-  return values.every((value) => typeof value === "string");
-}
-
-function trimStringArray(values: string[]): string[] {
+function trimStringArray(values: unknown[]): string[] {
   return values
+    .filter((value): value is string => typeof value === "string")
     .map((value) => value.trim())
     .filter(Boolean);
 }

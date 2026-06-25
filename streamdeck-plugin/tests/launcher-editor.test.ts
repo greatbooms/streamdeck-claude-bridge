@@ -49,19 +49,17 @@ describe("parseLauncherEditorRequest", () => {
     expect(parseLauncherEditorRequest({ type: "unknown" })).toBeNull();
   });
 
-  it("returns null for save requests with non-string array entries", () => {
+  it("filters non-string entries from save request arrays", () => {
     expect(parseLauncherEditorRequest({
       type: "saveProjectPreferences",
       projectPath: "/repo/api",
-      favorites: [123],
-      npmOrder: ["dev"],
-    })).toBeNull();
-
-    expect(parseLauncherEditorRequest({
+      favorites: [" bootRun ", 123, ""],
+      npmOrder: [" dev ", null, "build"],
+    })).toEqual({
       type: "saveProjectPreferences",
       projectPath: "/repo/api",
       favorites: ["bootRun"],
-      npmOrder: ["dev", null],
-    })).toBeNull();
+      npmOrder: ["dev", "build"],
+    });
   });
 });
