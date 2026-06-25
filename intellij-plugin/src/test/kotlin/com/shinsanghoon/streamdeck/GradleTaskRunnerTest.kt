@@ -1,6 +1,7 @@
 package com.shinsanghoon.streamdeck
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -27,5 +28,14 @@ class GradleTaskRunnerTest {
         assertFalse(executed)
         scheduled?.run()
         assertTrue(executed)
+    }
+
+    @Test
+    fun buildsGradleExecutionSettingsWithSystemId() {
+        val settings = GradleTaskRunner.buildSettings("/repo/api", "bootRun")
+
+        assertEquals("GRADLE", settings.externalSystemIdString)
+        assertEquals("/repo/api", settings.externalProjectPath)
+        assertEquals(listOf("bootRun"), settings.taskNames)
     }
 }

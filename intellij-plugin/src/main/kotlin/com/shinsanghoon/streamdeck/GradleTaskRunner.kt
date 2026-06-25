@@ -32,15 +32,18 @@ object GradleTaskRunner {
 
     private fun runNow(project: Project, task: String) {
         val basePath = project.basePath ?: error("project has no basePath")
-        val settings = ExternalSystemTaskExecutionSettings().apply {
-            externalProjectPath = basePath
-            taskNames = listOf(task)
-        }
         ExternalSystemUtil.runTask(
-            settings,
+            buildSettings(basePath, task),
             DefaultRunExecutor.EXECUTOR_ID,
             project,
             GradleConstants.SYSTEM_ID,
         )
     }
+
+    internal fun buildSettings(basePath: String, task: String): ExternalSystemTaskExecutionSettings =
+        ExternalSystemTaskExecutionSettings().apply {
+            externalSystemIdString = GradleConstants.SYSTEM_ID.id
+            externalProjectPath = basePath
+            taskNames = listOf(task)
+        }
 }
