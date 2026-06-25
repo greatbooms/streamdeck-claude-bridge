@@ -45,6 +45,7 @@ const switcher = new ProfileSwitcher(
 const answerAction = new AnswerAction(client);
 const cancelAction = new CancelAction(client);
 const questionAction = new QuestionAction(client);
+let launcherRefreshInFlight = false;
 
 async function refreshLauncher(): Promise<void> {
   launcherState.applyIntelliJProjects(await intellijClient.projects());
@@ -52,9 +53,15 @@ async function refreshLauncher(): Promise<void> {
 }
 
 function refreshLauncherSafely(): void {
-  void refreshLauncher().catch((err: unknown) => {
-    streamDeck.logger.error(`Launcher refresh failed: ${err instanceof Error ? err.message : String(err)}`);
-  });
+  if (!launcherAction.hasVisibleKeys() || launcherRefreshInFlight) return;
+  launcherRefreshInFlight = true;
+  void refreshLauncher()
+    .catch((err: unknown) => {
+      streamDeck.logger.error(`Launcher refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+    })
+    .finally(() => {
+      launcherRefreshInFlight = false;
+    });
 }
 
 const launcherAction = new LauncherAction(launcherState, {

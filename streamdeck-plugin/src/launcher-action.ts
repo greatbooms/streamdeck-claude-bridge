@@ -56,6 +56,13 @@ export class LauncherAction extends SingletonAction<LauncherSettings> {
     }
   }
 
+  hasVisibleKeys(): boolean {
+    for (const a of this.actions) {
+      if (a.isKey()) return true;
+    }
+    return false;
+  }
+
   private async handle(slot: LauncherSlot): Promise<void> {
     if (slot.kind === "project") {
       this.state.openProject(slot.path);
