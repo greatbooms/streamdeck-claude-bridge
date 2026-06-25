@@ -25,7 +25,7 @@ async def client(aiohttp_client, tmp_path):
     from bridge.state import PendingStore
     from bridge.ws import Hub
     runner = FakeGradleRunner()
-    app = make_app(PendingStore(), Hub(), FakeInjector(), gradle_runner=runner)
+    app = make_app(PendingStore(), Hub(), FakeInjector(), gradle_runner=runner, auth_token="secret")
     app["fake_gradle_runner"] = runner
     app["project_dir"] = tmp_path
     return await aiohttp_client(app)
@@ -34,14 +34,22 @@ async def client(aiohttp_client, tmp_path):
 async def test_gradle_iterm_endpoint_runs_valid_request(client):
     project = client.app["project_dir"] / "api"
     project.mkdir()
-    resp = await client.post("/run/gradle/iterm", json={"cwd": str(project), "task": "bootRun"})
+    resp = await client.post(
+        "/run/gradle/iterm",
+        json={"cwd": str(project), "task": "bootRun"},
+        headers={"X-StreamDeck-Bridge-Token": "secret"},
+    )
     assert resp.status == 200
     assert await resp.json() == {"ok": True, "command": "./gradlew bootRun"}
     assert client.app["fake_gradle_runner"].commands[0].task == "bootRun"
 
 
 async def test_gradle_iterm_endpoint_rejects_invalid_request(client):
-    resp = await client.post("/run/gradle/iterm", json={"cwd": "/missing", "task": "bootRun; bad"})
+    resp = await client.post(
+        "/run/gradle/iterm",
+        json={"cwd": "/missing", "task": "bootRun; bad"},
+        headers={"X-StreamDeck-Bridge-Token": "secret"},
+    )
     assert resp.status == 400
     body = await resp.json()
     assert body["ok"] is False
@@ -49,11 +57,23 @@ async def test_gradle_iterm_endpoint_rejects_invalid_request(client):
 
 
 async def test_gradle_iterm_endpoint_rejects_malformed_json(client):
-    resp = await client.post("/run/gradle/iterm", data="{", headers={"Content-Type": "application/json"})
+    resp = await client.post(
+        "/run/gradle/iterm",
+        data="{",
+        headers={"Content-Type": "application/json", "X-StreamDeck-Bridge-Token": "secret"},
+    )
     assert resp.status == 400
     body = await resp.json()
     assert body["ok"] is False
     assert "error" in body
+
+
+async def test_gradle_iterm_endpoint_rejects_missing_auth_token(client):
+    project = client.app["project_dir"] / "api"
+    project.mkdir()
+    resp = await client.post("/run/gradle/iterm", json={"cwd": str(project), "task": "bootRun"})
+    assert resp.status == 401
+    assert await resp.json() == {"ok": False, "error": "unauthorized"}
 
 
 async def test_gradle_iterm_endpoint_reports_runner_unavailable(aiohttp_client, tmp_path):
@@ -66,9 +86,13 @@ async def test_gradle_iterm_endpoint_reports_runner_unavailable(aiohttp_client, 
 
     project = tmp_path / "api"
     project.mkdir()
-    app = make_app(PendingStore(), Hub(), FakeInjector(), gradle_runner=FailingRunner())
+    app = make_app(PendingStore(), Hub(), FakeInjector(), gradle_runner=FailingRunner(), auth_token="secret")
     client = await aiohttp_client(app)
-    resp = await client.post("/run/gradle/iterm", json={"cwd": str(project), "task": "bootRun"})
+    resp = await client.post(
+        "/run/gradle/iterm",
+        json={"cwd": str(project), "task": "bootRun"},
+        headers={"X-StreamDeck-Bridge-Token": "secret"},
+    )
     assert resp.status == 503
     body = await resp.json()
     assert body == {"ok": False, "error": "iTerm2 injector loop not ready"}

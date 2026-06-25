@@ -2,6 +2,7 @@ package com.shinsanghoon.streamdeck
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 object GradleTaskDetector {
@@ -11,15 +12,23 @@ object GradleTaskDetector {
         val dir = Path.of(projectPath)
         val wrapper = dir.resolve("gradlew")
         if (!Files.exists(wrapper)) return emptyList()
-        val process = ProcessBuilder("./gradlew", "tasks", "--all", "--console=plain", "--quiet")
-            .directory(dir.toFile())
-            .redirectErrorStream(true)
-            .start()
-        if (!process.waitFor(15, TimeUnit.SECONDS)) {
-            process.destroyForcibly()
+        return try {
+            val process = ProcessBuilder("./gradlew", "tasks", "--all", "--console=plain", "--quiet")
+                .directory(dir.toFile())
+                .redirectErrorStream(true)
+                .start()
+            val output = CompletableFuture.supplyAsync {
+                process.inputStream.bufferedReader().use { it.readText() }
+            }
+            if (!process.waitFor(15, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+                output.cancel(true)
+                return emptyList()
+            }
+            parseTasks(output.get(1, TimeUnit.SECONDS))
+        } catch (_: Exception) {
             return emptyList()
         }
-        return parseTasks(process.inputStream.bufferedReader().readText())
     }
 
     fun parseTasks(output: String): List<String> =

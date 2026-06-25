@@ -1,3 +1,5 @@
+import { authHeaders, loadOrCreateBridgeToken, type TokenProvider } from "./launcher-auth.js";
+
 export interface TaskRun {
   projectPath: string;
   task: string;
@@ -16,12 +18,16 @@ export interface BridgeRunClient {
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 export class GradleBridgeClient implements BridgeRunClient {
-  constructor(private baseUrl = "http://127.0.0.1:8787", private fetchImpl: FetchLike = fetch) {}
+  constructor(
+    private baseUrl = "http://127.0.0.1:8787",
+    private fetchImpl: FetchLike = fetch,
+    private tokenProvider: TokenProvider = loadOrCreateBridgeToken,
+  ) {}
 
   async runGradleInIterm(path: string, gradleCommand: string, task: string): Promise<void> {
     const res = await this.fetchImpl(`${this.baseUrl}/run/gradle/iterm`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders(this.tokenProvider) },
       body: JSON.stringify({ cwd: path, gradleCommand, task }),
     });
 

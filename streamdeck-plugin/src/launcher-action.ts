@@ -66,6 +66,7 @@ export class LauncherAction extends SingletonAction<LauncherSettings> {
   private async handle(slot: LauncherSlot): Promise<void> {
     if (slot.kind === "project") {
       this.state.openProject(slot.path);
+      await this.deps.refresh();
       return;
     }
     if (slot.kind === "control" && slot.action === "back") {

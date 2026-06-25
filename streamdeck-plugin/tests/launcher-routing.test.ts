@@ -7,14 +7,17 @@ describe("GradleBridgeClient", () => {
     const client = new GradleBridgeClient("http://bridge", async (url, init) => {
       calls.push({ url: String(url), init });
       return new Response("", { status: 202 });
-    });
+    }, () => "secret");
 
     await client.runGradleInIterm("/repo/api", "./gradlew", ":api:bootRun");
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("http://bridge/run/gradle/iterm");
     expect(calls[0].init?.method).toBe("POST");
-    expect(calls[0].init?.headers).toEqual({ "Content-Type": "application/json" });
+    expect(calls[0].init?.headers).toEqual({
+      "Content-Type": "application/json",
+      "X-StreamDeck-Bridge-Token": "secret",
+    });
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({
       cwd: "/repo/api",
       gradleCommand: "./gradlew",
@@ -23,7 +26,7 @@ describe("GradleBridgeClient", () => {
   });
 
   it("throws on bridge non-ok responses", async () => {
-    const client = new GradleBridgeClient("http://bridge", async () => new Response("bad", { status: 500 }));
+    const client = new GradleBridgeClient("http://bridge", async () => new Response("bad", { status: 500 }), () => "secret");
 
     await expect(client.runGradleInIterm("/repo/api", "./gradlew", "test")).rejects.toThrow("Bridge iTerm fallback failed: 500");
   });

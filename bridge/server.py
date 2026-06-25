@@ -7,6 +7,7 @@ from bridge.state import PendingStore
 from bridge.ws import Hub, make_ws_handler
 from bridge.hooks_api import make_question_handler, make_resolved_handler, make_codex_permission_handler
 from bridge.injector import ItermInjector
+from bridge.auth import load_or_create_auth_token, is_authorized
 from bridge.gradle_runner import (
     GradleRequestError,
     ItermGradleRunner,
@@ -20,8 +21,11 @@ async def _index(request):
     return web.FileResponse(WEBCLIENT_DIR / "index.html")
 
 
-def make_gradle_iterm_handler(gradle_runner):
+def make_gradle_iterm_handler(gradle_runner, auth_token: str):
     async def handler(request):
+        if not is_authorized(request.headers, auth_token):
+            return web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+
         try:
             body = await request.json()
         except json.JSONDecodeError as e:
@@ -41,12 +45,13 @@ def make_gradle_iterm_handler(gradle_runner):
     return handler
 
 
-def make_app(store, hub, injector, gradle_runner=None) -> web.Application:
+def make_app(store, hub, injector, gradle_runner=None, auth_token: str | None = None) -> web.Application:
+    token = auth_token or load_or_create_auth_token()
     app = web.Application()
     app.router.add_post("/hook/question", make_question_handler(store, hub))
     app.router.add_post("/hook/codex/permission", make_codex_permission_handler(store, hub))
     app.router.add_post("/hook/resolved", make_resolved_handler(store, hub))
-    app.router.add_post("/run/gradle/iterm", make_gradle_iterm_handler(gradle_runner or ItermGradleRunner(injector)))
+    app.router.add_post("/run/gradle/iterm", make_gradle_iterm_handler(gradle_runner or ItermGradleRunner(injector), token))
     app.router.add_get("/ws", make_ws_handler(store, hub, injector))
     app.router.add_get("/", _index)
     app.router.add_static("/static", WEBCLIENT_DIR)

@@ -20,12 +20,16 @@ class BridgeServerService : Disposable {
         if (!started.compareAndSet(false, true)) return
         try {
             val http = HttpServer.create(InetSocketAddress("127.0.0.1", 8788), 0)
-            val httpExecutor = Executors.newSingleThreadExecutor()
+            val httpExecutor = Executors.newFixedThreadPool(4)
             http.executor = httpExecutor
             http.createContext("/health") { exchange ->
                 exchange.json(200, """{"ok":true}""")
             }
             http.createContext("/projects") { exchange ->
+                if (!BridgeAuth.isAuthorized(exchange)) {
+                    exchange.json(401, """{"ok":false,"error":"unauthorized"}""")
+                    return@createContext
+                }
                 when (exchange.requestURI.path) {
                     "/projects" -> exchange.json(200, ProjectRegistry.projectsJson())
                     "/projects/tasks" -> handleProjectTasks(exchange)

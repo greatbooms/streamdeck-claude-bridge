@@ -46,6 +46,27 @@ describe("LauncherState", () => {
     expect(tasks).toEqual(["bootRun", "test", "build", "clean"]);
   });
 
+  it("renders detected IntelliJ Gradle tasks with favorites first", () => {
+    const state = new LauncherState(config);
+    state.applyProjectTasks("/repo/api", ["test", ":api:bootRun", "classes"]);
+    state.openProject("/repo/api");
+
+    const tasks = state.slots().filter((slot) => slot.kind === "task").map((slot) => slot.task);
+
+    expect(tasks).toEqual(["bootRun", "test", ":api:bootRun", "classes"]);
+  });
+
+  it("renders config errors instead of a blank launcher", () => {
+    const state = new LauncherState({ projects: [] });
+    state.setConfigError("launcher.json: invalid task");
+
+    expect(state.slots()[0]).toMatchObject({
+      kind: "message",
+      label: "Config Error",
+      detail: "launcher.json: invalid task",
+    });
+  });
+
   it("back returns to home", () => {
     const state = new LauncherState(config);
     state.openProject("/repo/api");

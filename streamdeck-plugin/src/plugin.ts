@@ -16,6 +16,7 @@ import { IntelliJClient } from "./intellij-client.js";
 import { LauncherAction } from "./launcher-action.js";
 import { loadLauncherConfigFromText, parseLauncherConfig } from "./launcher-config.js";
 import { LauncherState } from "./launcher-state.js";
+import type { LauncherConfig } from "./launcher-types.js";
 
 const DEFAULT_PROFILE = "Claude Bridge";
 const URL = "ws://127.0.0.1:8787/ws";
@@ -24,17 +25,34 @@ const URL = "ws://127.0.0.1:8787/ws";
 const client = new BridgeClient(URL, (u) => new WebSocket(u) as unknown as WebSocketLike);
 const intellijClient = new IntelliJClient();
 const gradleBridgeClient = new GradleBridgeClient();
-const launcherState = new LauncherState(loadLauncherConfig());
+
+interface LauncherConfigLoad {
+  config: LauncherConfig;
+  error: string | null;
+}
+
+const initialLauncherConfig = loadLauncherConfig();
+const launcherState = new LauncherState(initialLauncherConfig.config);
+launcherState.setConfigError(initialLauncherConfig.error);
 
 function launcherConfigPath(): string {
   return path.join(os.homedir(), "Library", "Application Support", "streamdeck-claude-bridge", "launcher.json");
 }
 
-function loadLauncherConfig() {
+function emptyLauncherConfig(): LauncherConfig {
+  return parseLauncherConfig({ projects: [] });
+}
+
+function loadLauncherConfig(): LauncherConfigLoad {
   try {
-    return loadLauncherConfigFromText(fs.readFileSync(launcherConfigPath(), "utf8"));
-  } catch {
-    return parseLauncherConfig({ projects: [] });
+    return { config: loadLauncherConfigFromText(fs.readFileSync(launcherConfigPath(), "utf8")), error: null };
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return { config: emptyLauncherConfig(), error: null };
+    const message = err instanceof Error ? err.message : String(err);
+    const error = `launcher.json: ${message}`;
+    streamDeck.logger.error(`Launcher config load failed at ${launcherConfigPath()}: ${message}`);
+    return { config: emptyLauncherConfig(), error };
   }
 }
 
@@ -63,8 +81,15 @@ const questionAction = new QuestionAction(client);
 let launcherRefreshInFlight = false;
 
 async function refreshLauncher(): Promise<void> {
-  launcherState.applyConfig(loadLauncherConfig());
-  launcherState.applyIntelliJProjects(await intellijClient.projects());
+  const configLoad = loadLauncherConfig();
+  launcherState.applyConfig(configLoad.config);
+  launcherState.setConfigError(configLoad.error);
+  const projects = await intellijClient.projects();
+  launcherState.applyIntelliJProjects(projects);
+  const page = launcherState.currentPage();
+  if (!configLoad.error && page.kind === "project") {
+    launcherState.applyProjectTasks(page.path, await intellijClient.tasks(page.path));
+  }
   await launcherAction.refreshAll();
 }
 

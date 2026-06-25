@@ -21,6 +21,7 @@ export type LauncherPage =
 
 export type LauncherSlot =
   | { kind: "empty" }
+  | { kind: "message"; label: string; detail: string }
   | { kind: "project"; label: string; path: string; status: "OPEN" | "iTerm" | "MISSING" }
   | { kind: "task"; projectPath: string; task: string; gradleCommand: string; status: "OPEN" | "iTerm" }
   | { kind: "control"; action: "back" | "refresh"; label: string };

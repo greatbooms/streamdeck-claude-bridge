@@ -7,7 +7,7 @@ describe("IntelliJClient", () => {
     const client = new IntelliJClient("http://idea", async (url) => {
       calls.push(String(url));
       return new Response(JSON.stringify({ projects: [{ name: "api", path: "/repo/api", basePath: "/repo/api" }] }), { status: 200 });
-    });
+    }, () => "secret");
 
     await expect(client.projects()).resolves.toEqual([{ name: "api", path: "/repo/api", basePath: "/repo/api" }]);
     expect(calls).toEqual(["http://idea/projects"]);
@@ -26,7 +26,7 @@ describe("IntelliJClient", () => {
     const client = new IntelliJClient("http://idea", async (url) => {
       calls.push(String(url));
       return new Response(JSON.stringify({ tasks: ["bootRun", 12, ":api:test", null] }), { status: 200 });
-    });
+    }, () => "secret");
 
     await expect(client.tasks("/repo/my api")).resolves.toEqual(["bootRun", ":api:test"]);
     expect(calls).toEqual(["http://idea/projects/tasks?path=%2Frepo%2Fmy%20api"]);
@@ -45,14 +45,34 @@ describe("IntelliJClient", () => {
     const client = new IntelliJClient("http://idea", async (url, init) => {
       calls.push({ url: String(url), init });
       return new Response("", { status: 200 });
-    });
+    }, () => "secret");
 
     await expect(client.runGradle("/repo/api", "bootRun")).resolves.toBe(true);
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("http://idea/projects/run");
     expect(calls[0].init?.method).toBe("POST");
-    expect(calls[0].init?.headers).toEqual({ "Content-Type": "application/json" });
+    expect(calls[0].init?.headers).toEqual({
+      "Content-Type": "application/json",
+      "X-StreamDeck-Bridge-Token": "secret",
+    });
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ path: "/repo/api", task: "bootRun" });
+  });
+
+  it("returns empty projects and tasks when IntelliJ is unreachable", async () => {
+    const client = new IntelliJClient("http://idea", async () => {
+      throw new TypeError("connection refused");
+    }, () => "secret");
+
+    await expect(client.projects()).resolves.toEqual([]);
+    await expect(client.tasks("/repo/api")).resolves.toEqual([]);
+  });
+
+  it("returns false from runGradle when IntelliJ is unreachable so callers can fall back", async () => {
+    const client = new IntelliJClient("http://idea", async () => {
+      throw new TypeError("connection refused");
+    }, () => "secret");
+
+    await expect(client.runGradle("/repo/api", "bootRun")).resolves.toBe(false);
   });
 
   it("returns false when run receives project-not-open responses", async () => {
