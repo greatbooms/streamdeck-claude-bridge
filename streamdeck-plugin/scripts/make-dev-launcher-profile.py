@@ -30,7 +30,8 @@ def main() -> None:
     plugin_dir = Path(__file__).resolve().parents[1] / "com.shinsanghoon.claude-bridge.sdPlugin"
     out = plugin_dir / "Dev Launcher.streamDeckProfile"
     profile_uuid = str(uuid.uuid4()).upper()
-    page_uuid = str(uuid.uuid4()).upper()
+    launcher_page_uuid = str(uuid.uuid4()).upper()
+    default_page_uuid = str(uuid.uuid4()).upper()
     actions = {
         f"{column},{row}": action(row * 5 + column)
         for row in range(3)
@@ -50,10 +51,15 @@ def main() -> None:
         "Name": PROFILE_NAME,
         "Pages": {
             "Current": "00000000-0000-0000-0000-000000000000",
-            "Default": page_uuid.lower(),
-            "Pages": [],
+            "Default": default_page_uuid.lower(),
+            "Pages": [launcher_page_uuid.lower()],
         },
         "Version": "3.0",
+    }
+    default_page_manifest = {
+        "Controllers": [{"Actions": None, "Type": "Keypad"}],
+        "Icon": "",
+        "Name": "",
     }
     page_manifest = {
         "Controllers": [{"Actions": actions, "Type": "Keypad"}],
@@ -61,16 +67,20 @@ def main() -> None:
         "Name": PROFILE_NAME,
     }
     root = f"Profiles/{profile_uuid}.sdProfile"
-    page = f"{root}/Profiles/{page_uuid}"
+    default_page = f"{root}/Profiles/{default_page_uuid}"
+    launcher_page = f"{root}/Profiles/{launcher_page_uuid}"
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("package.json", json.dumps(package, separators=(",", ":")))
         z.writestr("Profiles/", "")
         z.writestr(f"{root}/", "")
         z.writestr(f"{root}/manifest.json", json.dumps(root_manifest, separators=(",", ":")))
         z.writestr(f"{root}/Profiles/", "")
-        z.writestr(f"{page}/", "")
-        z.writestr(f"{page}/Images/", "")
-        z.writestr(f"{page}/manifest.json", json.dumps(page_manifest, separators=(",", ":")))
+        z.writestr(f"{default_page}/", "")
+        z.writestr(f"{default_page}/Images/", "")
+        z.writestr(f"{default_page}/manifest.json", json.dumps(default_page_manifest, separators=(",", ":")))
+        z.writestr(f"{launcher_page}/", "")
+        z.writestr(f"{launcher_page}/Images/", "")
+        z.writestr(f"{launcher_page}/manifest.json", json.dumps(page_manifest, separators=(",", ":")))
     print(out)
 
 

@@ -67,9 +67,19 @@ describe("Stream Deck manifest", () => {
     const entries = execFileSync("unzip", ["-Z1", profile], { encoding: "utf8" })
       .trim()
       .split("\n");
+    const profileManifestEntry = entries.find((entry) => entry.endsWith(".sdProfile/manifest.json"));
+    expect(profileManifestEntry).toBeTruthy();
+    const profileManifest = JSON.parse(
+      execFileSync("unzip", ["-p", profile, profileManifestEntry!], { encoding: "utf8" }),
+    );
+    expect(profileManifest.Name).toBe("Dev Launcher");
+    expect(profileManifest.Pages.Pages).toHaveLength(1);
+    expect(profileManifest.Pages.Default).not.toBe(profileManifest.Pages.Pages[0]);
+
     const pageManifestEntries = entries.filter(
       (entry) => entry.includes(".sdProfile/Profiles/") && entry.endsWith("/manifest.json"),
     );
+    expect(pageManifestEntries).toHaveLength(2);
     const pageManifests = pageManifestEntries.map((entry) =>
       JSON.parse(execFileSync("unzip", ["-p", profile, entry], { encoding: "utf8" })),
     );
