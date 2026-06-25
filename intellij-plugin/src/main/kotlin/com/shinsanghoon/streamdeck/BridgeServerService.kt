@@ -5,6 +5,7 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
+import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -24,6 +25,13 @@ class BridgeServerService : Disposable {
             http.createContext("/health") { exchange ->
                 exchange.json(200, """{"ok":true}""")
             }
+            http.createContext("/projects") { exchange ->
+                when (exchange.requestURI.path) {
+                    "/projects" -> exchange.json(200, ProjectRegistry.projectsJson())
+                    "/projects/tasks" -> handleProjectTasks(exchange)
+                    else -> exchange.json(404, """{"ok":false,"error":"not found"}""")
+                }
+            }
             http.start()
             server = http
             executor = httpExecutor
@@ -40,6 +48,19 @@ class BridgeServerService : Disposable {
         executor = null
         started.set(false)
     }
+}
+
+private fun handleProjectTasks(exchange: HttpExchange) {
+    val path = exchange.requestURI.rawQuery
+        ?.split("&")
+        ?.firstOrNull { it.startsWith("path=") }
+        ?.removePrefix("path=")
+        ?.let { URLDecoder.decode(it, StandardCharsets.UTF_8) }
+    if (path == null || ProjectRegistry.findByPath(path) == null) {
+        exchange.json(404, """{"ok":false,"error":"project not open"}""")
+        return
+    }
+    exchange.json(200, GradleTaskDetector.tasksJson(path))
 }
 
 fun HttpExchange.json(status: Int, body: String) {
