@@ -1,4 +1,5 @@
 import pytest
+import iterm2
 from bridge.injector import ItermInjector, SessionNotFound
 
 
@@ -74,3 +75,21 @@ async def test_run_command_opens_window_and_sends_command():
     inj._app = FakeWindowApp(sess)
     await inj._run_command("cd /tmp && ./gradlew test")
     assert sess.sent == ["cd /tmp && ./gradlew test\n"]
+
+
+async def test_run_command_uses_window_api_when_app_has_no_create_window(monkeypatch):
+    sess = FakeSession()
+    connection = object()
+
+    async def create_window(actual_connection):
+        assert actual_connection is connection
+        return FakeWindow(sess)
+
+    monkeypatch.setattr(iterm2.Window, "async_create", create_window)
+    inj = ItermInjector()
+    inj._app = FakeApp({})
+    inj._connection = connection
+
+    await inj._run_command("cd /tmp && npm run start:dev")
+
+    assert sess.sent == ["cd /tmp && npm run start:dev\n"]
