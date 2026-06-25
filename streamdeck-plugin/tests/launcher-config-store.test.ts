@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import fs, { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { FileLauncherConfigStore } from "../src/launcher-config-store.js";
 
 describe("FileLauncherConfigStore", () => {
@@ -48,6 +48,51 @@ describe("FileLauncherConfigStore", () => {
     expect(written.projects[0].npmOrder).toEqual(["dev", "build"]);
   });
 
+  it("preserves unrelated raw config shape when saving project preferences", () => {
+    const dir = mkdtempSync(join(tmpdir(), "launcher-store-"));
+    const file = join(dir, "launcher.json");
+    const original = {
+      schemaVersion: 1,
+      projects: [
+        {
+          name: "API",
+          path: "/repo/root/../api/",
+          favorites: ["bootRun"],
+          npmOrder: ["start:dev"],
+          color: "blue",
+        },
+        {
+          name: "Admin",
+          path: "/repo/admin",
+          favorites: ["test"],
+          customProjectField: { owner: "ops" },
+        },
+      ],
+    };
+    writeFileSync(file, JSON.stringify(original));
+    const store = new FileLauncherConfigStore(file);
+
+    const result = store.saveProjectPreferences("/repo/api", {
+      favorites: ["build", "test"],
+      npmOrder: ["dev", "build"],
+    });
+
+    expect(result.error).toBeNull();
+
+    const written = JSON.parse(readFileSync(file, "utf8"));
+    const { favorites, npmOrder, ...selectedRest } = written.projects[0];
+    expect(favorites).toEqual(["build", "test"]);
+    expect(npmOrder).toEqual(["dev", "build"]);
+    expect(selectedRest).toEqual({
+      name: "API",
+      path: "/repo/root/../api/",
+      color: "blue",
+    });
+    expect(written.schemaVersion).toBe(1);
+    expect(written.projects[1]).toEqual(original.projects[1]);
+    expect(written.projects[1]).not.toHaveProperty("npmOrder");
+  });
+
   it("returns an error and leaves the file unchanged for unknown projects", () => {
     const dir = mkdtempSync(join(tmpdir(), "launcher-store-"));
     const file = join(dir, "launcher.json");
@@ -78,5 +123,33 @@ describe("FileLauncherConfigStore", () => {
 
     expect(result.error).toContain("Gradle task");
     expect(readFileSync(file, "utf8")).toBe(original);
+  });
+
+  it("removes temporary config files when writing fails", () => {
+    const dir = mkdtempSync(join(tmpdir(), "launcher-store-"));
+    const file = join(dir, "launcher.json");
+    const original = JSON.stringify({ projects: [{ name: "API", path: "/repo/api" }] });
+    writeFileSync(file, original);
+    const store = new FileLauncherConfigStore(file);
+    const timestamp = 123456789;
+    const tempPath = `${file}.${process.pid}.${timestamp}.tmp`;
+    const dateNow = vi.spyOn(Date, "now").mockReturnValue(timestamp);
+    const renameSync = vi.spyOn(fs, "renameSync").mockImplementationOnce(() => {
+      throw new Error("rename failed");
+    });
+
+    try {
+      const result = store.saveProjectPreferences("/repo/api", {
+        favorites: ["bootRun"],
+        npmOrder: ["dev"],
+      });
+
+      expect(result.error).toContain("rename failed");
+      expect(existsSync(tempPath)).toBe(false);
+      expect(readFileSync(file, "utf8")).toBe(original);
+    } finally {
+      renameSync.mockRestore();
+      dateNow.mockRestore();
+    }
   });
 });
