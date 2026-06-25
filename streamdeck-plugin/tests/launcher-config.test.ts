@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseLauncherConfig } from "../src/launcher-config.js";
+import { loadLauncherConfigFromText, parseLauncherConfig } from "../src/launcher-config.js";
 
 describe("parseLauncherConfig", () => {
   it("parses projects and defaults gradleCommand/favorites", () => {
@@ -34,5 +34,18 @@ describe("parseLauncherConfig", () => {
         projects: [{ name: "API", path: "/repo/api", gradleCommand }],
       })).toThrow("gradleCommand");
     }
+  });
+
+  it("loads config from JSON text", () => {
+    const config = loadLauncherConfigFromText(
+      '{"projects":[{"name":"API","path":"/repo/api","favorites":["bootRun"]}]}',
+    );
+
+    expect(config.projects[0]).toEqual({
+      name: "API",
+      path: "/repo/api",
+      gradleCommand: "./gradlew",
+      favorites: ["bootRun"],
+    });
   });
 });

@@ -47,3 +47,7 @@ export function parseLauncherConfig(raw: unknown): LauncherConfig {
   if (!Array.isArray(projects)) return { projects: [] };
   return { projects: projects.map(parseProject) };
 }
+
+export function loadLauncherConfigFromText(text: string): LauncherConfig {
+  return parseLauncherConfig(JSON.parse(text));
+}

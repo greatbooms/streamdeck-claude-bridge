@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import streamDeck from "@elgato/streamdeck";
 import WebSocket from "ws";
 import { BridgeClient, type WebSocketLike } from "./bridge-client.js";
@@ -11,7 +14,7 @@ import { syncDeckState } from "./plugin-sync.js";
 import { GradleBridgeClient } from "./gradle-bridge-client.js";
 import { IntelliJClient } from "./intellij-client.js";
 import { LauncherAction } from "./launcher-action.js";
-import { parseLauncherConfig } from "./launcher-config.js";
+import { loadLauncherConfigFromText, parseLauncherConfig } from "./launcher-config.js";
 import { LauncherState } from "./launcher-state.js";
 
 const DEFAULT_PROFILE = "Claude Bridge";
@@ -21,7 +24,19 @@ const URL = "ws://127.0.0.1:8787/ws";
 const client = new BridgeClient(URL, (u) => new WebSocket(u) as unknown as WebSocketLike);
 const intellijClient = new IntelliJClient();
 const gradleBridgeClient = new GradleBridgeClient();
-const launcherState = new LauncherState(parseLauncherConfig({ projects: [] }));
+const launcherState = new LauncherState(loadLauncherConfig());
+
+function launcherConfigPath(): string {
+  return path.join(os.homedir(), "Library", "Application Support", "streamdeck-claude-bridge", "launcher.json");
+}
+
+function loadLauncherConfig() {
+  try {
+    return loadLauncherConfigFromText(fs.readFileSync(launcherConfigPath(), "utf8"));
+  } catch {
+    return parseLauncherConfig({ projects: [] });
+  }
+}
 
 function firstDeviceId(): string | null {
   // 번들 프로파일은 DeviceType 0(표준 Stream Deck)용이므로 그 타입의 연결된 기기를 우선 선택.
@@ -48,6 +63,7 @@ const questionAction = new QuestionAction(client);
 let launcherRefreshInFlight = false;
 
 async function refreshLauncher(): Promise<void> {
+  launcherState.applyConfig(loadLauncherConfig());
   launcherState.applyIntelliJProjects(await intellijClient.projects());
   await launcherAction.refreshAll();
 }
