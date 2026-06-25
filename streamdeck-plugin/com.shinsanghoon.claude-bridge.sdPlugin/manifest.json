@@ -51,6 +51,7 @@
       "Icon": "imgs/actions/logo/icon",
       "Tooltip": "프로젝트/Gradle 런처 타일",
       "Controllers": ["Keypad"],
+      "PropertyInspectorPath": "ui/launcher.html",
       "States": [{ "Image": "imgs/actions/logo/key" }]
     }
   ],

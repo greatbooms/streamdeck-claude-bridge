@@ -157,6 +157,7 @@ IntelliJ 프로젝트 실행용 개발 프로파일은 선택 기능이다.
 1. `intellij-plugin/build/distributions/`에서 IntelliJ companion plugin zip을 설치한다.
 2. Stream Deck 앱에서 번들된 **Dev Launcher** 프로파일을 설치한다.
 3. 필요한 경우 `~/Library/Application Support/streamdeck-claude-bridge/launcher.json` 파일로 이름/favorites를 보정한다.
+4. Stream Deck 앱에서 **Dev Launcher** 프로파일의 `Project Launcher Tile`을 선택하면 Property Inspector에서 Gradle favorites와 npm order를 편집할 수 있다. 이 편집기는 같은 `launcher.json` 파일을 쓴다.
 
 기본 동작:
 
@@ -175,13 +176,15 @@ IntelliJ 프로젝트 실행용 개발 프로파일은 선택 기능이다.
       "name": "API",
       "path": "/Users/eric/workspace/api-server",
       "gradleCommand": "./gradlew",
-      "favorites": ["bootRun", "test", "build"]
+      "favorites": ["bootRun", "test", "build"],
+      "npmOrder": ["start:dev", "dev", "start", "test", "build", "lint"]
     },
     {
       "name": "Web",
       "path": "/Users/eric/workspace/web",
       "gradleCommand": "./gradlew",
-      "favorites": []
+      "favorites": [],
+      "npmOrder": ["start:dev", "dev", "start", "test", "build", "lint"]
     }
   ]
 }
@@ -189,7 +192,7 @@ IntelliJ 프로젝트 실행용 개발 프로파일은 선택 기능이다.
 
 - `launcher.json`에 없어도 IntelliJ에 열린 프로젝트는 표시된다.
 - `favorites`는 Gradle command를 우선 노출할 때 쓴다.
-- npm scripts는 `start:dev`, `dev`, `start`, `test`, `build`, `lint` 순으로 우선 표시된다.
+- `npmOrder`는 npm scripts를 우선 노출할 때 쓰며, 기본 순서는 `start:dev`, `dev`, `start`, `test`, `build`, `lint`이다.
 
 ---
 

@@ -7,7 +7,7 @@ const pluginDir = join(process.cwd(), "com.shinsanghoon.claude-bridge.sdPlugin")
 const LAUNCHER_UUID = "com.shinsanghoon.claude-bridge.launcher";
 
 function readManifest(): {
-  Actions: Array<{ UUID: string; Name: string }>;
+  Actions: Array<{ UUID: string; Name: string; PropertyInspectorPath?: string }>;
   Profiles: Array<{ Name: string }>;
 } {
   return JSON.parse(readFileSync(join(pluginDir, "manifest.json"), "utf8"));
@@ -37,6 +37,8 @@ describe("Stream Deck manifest", () => {
     const manifest = readManifest();
     const launcher = manifest.Actions.find((action) => action.UUID === LAUNCHER_UUID);
     expect(launcher?.Name).toBe("Project Launcher Tile");
+    expect(launcher?.PropertyInspectorPath).toBe("ui/launcher.html");
+    expect(existsSync(join(pluginDir, "ui", "launcher.html"))).toBe(true);
     expect(manifest.Profiles.some((profile) => profile.Name === "Dev Launcher")).toBe(true);
   });
 
