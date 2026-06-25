@@ -5,7 +5,7 @@ import { DEFAULT_NPM_ORDER } from "./project-detector.js";
 export { DEFAULT_NPM_ORDER } from "./project-detector.js";
 
 const TASK_RE = /^:?[A-Za-z0-9_][A-Za-z0-9_.-]*(?::[A-Za-z0-9_][A-Za-z0-9_.-]*)*$/;
-const NPM_SCRIPT_RE = /^[A-Za-z0-9_:@./-]+$/;
+const NPM_SCRIPT_RE = /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/;
 const PLAIN_COMMAND_RE = /^[A-Za-z0-9_.-]+$/;
 const ABSOLUTE_COMMAND_RE = /^\/[A-Za-z0-9_./-]+$/;
 

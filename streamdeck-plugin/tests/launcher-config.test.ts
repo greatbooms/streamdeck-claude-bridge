@@ -41,7 +41,7 @@ describe("parseLauncherConfig", () => {
   });
 
   it("rejects unsafe npm script names", () => {
-    for (const script of ["start dev", "dev && whoami", "build;rm", "", 123]) {
+    for (const script of ["start dev", "dev && whoami", "build;rm", "@scope/build", "./dev", ":dev", "", 123]) {
       expect(() => parseLauncherConfig({
         projects: [{ name: "API", path: "/repo/api", npmOrder: [script] }],
       })).toThrow("npm script");

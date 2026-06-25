@@ -182,11 +182,14 @@
     let websocket = null;
     let propertyInspectorUuid = null;
     let actionUuid = null;
+    let actionContext = null;
     let snapshot = { selectedPath: null, projects: [], status: null, error: null };
 
     function connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUuid, inRegisterEvent, inInfo, inActionInfo) {
       propertyInspectorUuid = inPropertyInspectorUuid;
-      actionUuid = parseActionUuid(inActionInfo);
+      const actionInfo = parseActionInfo(inActionInfo);
+      actionUuid = actionInfo.action;
+      actionContext = actionInfo.context;
       websocket = new WebSocket("ws://127.0.0.1:" + inPort);
 
       websocket.addEventListener("open", function () {
@@ -212,12 +215,15 @@
 
     window.connectElgatoStreamDeckSocket = connectElgatoStreamDeckSocket;
 
-    function parseActionUuid(actionInfo) {
+    function parseActionInfo(actionInfo) {
       try {
         const parsed = typeof actionInfo === "string" ? JSON.parse(actionInfo) : actionInfo;
-        return parsed && typeof parsed.action === "string" ? parsed.action : null;
+        return {
+          action: parsed && typeof parsed.action === "string" ? parsed.action : null,
+          context: parsed && typeof parsed.context === "string" ? parsed.context : null,
+        };
       } catch (err) {
-        return null;
+        return { action: null, context: null };
       }
     }
 
@@ -356,11 +362,15 @@
         setMessage("Stream Deck is not connected.", true);
         return;
       }
+      if (!actionContext) {
+        setMessage("Stream Deck action context is unavailable.", true);
+        return;
+      }
 
       websocket.send(JSON.stringify({
         event: "sendToPlugin",
         action: actionUuid,
-        context: propertyInspectorUuid,
+        context: actionContext,
         payload: payload,
       }));
     }
