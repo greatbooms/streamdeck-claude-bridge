@@ -3,6 +3,7 @@ export interface LauncherProject {
   path: string;
   gradleCommand: string;
   favorites: string[];
+  npmOrder: string[];
 }
 
 export interface LauncherConfig {
@@ -18,6 +19,27 @@ export interface IntelliJProject {
 export interface ProjectCapabilities {
   hasGradle: boolean;
   npmScripts: string[];
+}
+
+export interface LauncherProjectPreferences {
+  favorites: string[];
+  npmOrder: string[];
+}
+
+export interface LauncherEditorProject {
+  name: string;
+  path: string;
+  favorites: string[];
+  npmOrder: string[];
+  detectedGradleTasks: string[];
+  detectedNpmScripts: string[];
+}
+
+export interface LauncherEditorSnapshot {
+  selectedPath: string | null;
+  projects: LauncherEditorProject[];
+  status: string | null;
+  error: string | null;
 }
 
 export type LauncherPage =

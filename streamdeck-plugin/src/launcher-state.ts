@@ -8,7 +8,7 @@ import type {
   ProjectCapabilities,
 } from "./launcher-types.js";
 import { normalizeProjectPath } from "./launcher-paths.js";
-import { orderedNpmScripts } from "./project-detector.js";
+import { DEFAULT_NPM_ORDER, orderedNpmScripts } from "./project-detector.js";
 
 const DEFAULT_TASKS = ["bootRun", "test", "build", "clean"];
 const SLOT_COUNT = 15;
@@ -109,6 +109,7 @@ export class LauncherState {
         path: project.path,
         gradleCommand: "./gradlew",
         favorites: [],
+        npmOrder: [...DEFAULT_NPM_ORDER],
       });
     }
     return [...byPath.values()];

@@ -6,7 +6,7 @@ export interface ProjectCapabilities {
   npmScripts: string[];
 }
 
-const PREFERRED_NPM_SCRIPTS = ["start:dev", "dev", "start", "test", "build", "lint"];
+export const DEFAULT_NPM_ORDER = ["start:dev", "dev", "start", "test", "build", "lint"];
 
 function fileExists(file: string): boolean {
   try {
@@ -16,9 +16,9 @@ function fileExists(file: string): boolean {
   }
 }
 
-export function orderedNpmScripts(scripts: string[]): string[] {
+export function orderedNpmScripts(scripts: string[], preferredOrder: string[] = DEFAULT_NPM_ORDER): string[] {
   const unique = [...new Set(scripts.filter((script) => script.trim()).map((script) => script.trim()))];
-  const preferred = PREFERRED_NPM_SCRIPTS.filter((script) => unique.includes(script));
+  const preferred = preferredOrder.filter((script) => unique.includes(script));
   const rest = unique.filter((script) => !preferred.includes(script)).sort((a, b) => a.localeCompare(b));
   return [...preferred, ...rest];
 }

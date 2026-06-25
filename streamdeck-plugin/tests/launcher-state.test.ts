@@ -4,8 +4,20 @@ import type { LauncherConfig, IntelliJProject } from "../src/launcher-types.js";
 
 const config: LauncherConfig = {
   projects: [
-    { name: "API", path: "/repo/api", gradleCommand: "./gradlew", favorites: ["bootRun", "test"] },
-    { name: "Admin", path: "/repo/admin", gradleCommand: "./gradlew", favorites: [] },
+    {
+      name: "API",
+      path: "/repo/api",
+      gradleCommand: "./gradlew",
+      favorites: ["bootRun", "test"],
+      npmOrder: ["start:dev", "dev", "start", "test", "build", "lint"],
+    },
+    {
+      name: "Admin",
+      path: "/repo/admin",
+      gradleCommand: "./gradlew",
+      favorites: [],
+      npmOrder: ["start:dev", "dev", "start", "test", "build", "lint"],
+    },
   ],
 };
 
@@ -37,7 +49,13 @@ describe("LauncherState", () => {
 
   it("normalizes configured and open IntelliJ project paths before matching", () => {
     const state = new LauncherState({
-      projects: [{ name: "API", path: "/repo/root/../api/", gradleCommand: "./gradlew", favorites: [] }],
+      projects: [{
+        name: "API",
+        path: "/repo/root/../api/",
+        gradleCommand: "./gradlew",
+        favorites: [],
+        npmOrder: ["start:dev", "dev", "start", "test", "build", "lint"],
+      }],
     });
     state.applyIntelliJProjects([{ name: "api", path: "/repo/api", basePath: "/repo/api" }]);
     expect(state.slots()[0]).toMatchObject({ kind: "project", label: "API", path: "/repo/api", status: "OPEN" });

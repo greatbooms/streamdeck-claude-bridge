@@ -1,14 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { loadLauncherConfigFromText, parseLauncherConfig } from "../src/launcher-config.js";
+import { DEFAULT_NPM_ORDER, loadLauncherConfigFromText, parseLauncherConfig } from "../src/launcher-config.js";
 
 describe("parseLauncherConfig", () => {
-  it("parses projects and defaults gradleCommand/favorites", () => {
+  it("parses projects and defaults gradleCommand/favorites/npmOrder", () => {
     const config = parseLauncherConfig({
       projects: [{ name: "API", path: "/repo/root/../api/" }],
     });
     expect(config.projects).toEqual([
-      { name: "API", path: "/repo/api", gradleCommand: "./gradlew", favorites: [] },
+      {
+        name: "API",
+        path: "/repo/api",
+        gradleCommand: "./gradlew",
+        favorites: [],
+        npmOrder: DEFAULT_NPM_ORDER,
+      },
     ]);
+  });
+
+  it("parses custom npm order and removes duplicates", () => {
+    const config = parseLauncherConfig({
+      projects: [{
+        name: "API",
+        path: "/repo/api",
+        npmOrder: ["start:dev", "build", "start:dev", "lint"],
+      }],
+    });
+
+    expect(config.projects[0].npmOrder).toEqual(["start:dev", "build", "lint"]);
   });
 
   it("rejects projects without name or path", () => {
@@ -20,6 +38,14 @@ describe("parseLauncherConfig", () => {
     expect(() => parseLauncherConfig({
       projects: [{ name: "API", path: "/repo", favorites: ["bootRun --scan"] }],
     })).toThrow("Gradle task");
+  });
+
+  it("rejects unsafe npm script names", () => {
+    for (const script of ["start dev", "dev && whoami", "build;rm", "", 123]) {
+      expect(() => parseLauncherConfig({
+        projects: [{ name: "API", path: "/repo/api", npmOrder: [script] }],
+      })).toThrow("npm script");
+    }
   });
 
   it("rejects relative paths", () => {
@@ -38,7 +64,7 @@ describe("parseLauncherConfig", () => {
 
   it("loads config from JSON text", () => {
     const config = loadLauncherConfigFromText(
-      '{"projects":[{"name":"API","path":"/repo/api","favorites":["bootRun"]}]}',
+      '{"projects":[{"name":"API","path":"/repo/api","favorites":["bootRun"],"npmOrder":["start:dev"]}]}',
     );
 
     expect(config.projects[0]).toEqual({
@@ -46,6 +72,7 @@ describe("parseLauncherConfig", () => {
       path: "/repo/api",
       gradleCommand: "./gradlew",
       favorites: ["bootRun"],
+      npmOrder: ["start:dev"],
     });
   });
 });

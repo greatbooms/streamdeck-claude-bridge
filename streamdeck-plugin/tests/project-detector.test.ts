@@ -27,4 +27,13 @@ describe("project detector", () => {
       "custom",
     ]);
   });
+
+  it("orders npm scripts with project-specific preference first", () => {
+    expect(orderedNpmScripts(["build", "start:dev", "lint", "dev"], ["dev", "build"])).toEqual([
+      "dev",
+      "build",
+      "lint",
+      "start:dev",
+    ]);
+  });
 });
