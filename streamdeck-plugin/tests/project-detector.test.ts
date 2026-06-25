@@ -19,11 +19,13 @@ describe("project detector", () => {
   });
 
   it("orders common npm scripts first", () => {
-    expect(orderedNpmScripts(["custom", "build", "start:dev", "dev", "test"])).toEqual([
+    expect(orderedNpmScripts(["custom", "lint", "build", "start:dev", "start", "dev", "test"])).toEqual([
       "start:dev",
       "dev",
+      "start",
       "test",
       "build",
+      "lint",
       "custom",
     ]);
   });
