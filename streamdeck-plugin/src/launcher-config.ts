@@ -1,0 +1,43 @@
+import type { LauncherConfig, LauncherProject } from "./launcher-types.js";
+import { requireAbsoluteProjectPath } from "./launcher-paths.js";
+
+const TASK_RE = /^:?[A-Za-z0-9_][A-Za-z0-9_.-]*(?::[A-Za-z0-9_][A-Za-z0-9_.-]*)*$/;
+const PLAIN_COMMAND_RE = /^[A-Za-z0-9_.-]+$/;
+const ABSOLUTE_COMMAND_RE = /^\/[A-Za-z0-9_./-]+$/;
+
+function asString(value: unknown, field: string): string {
+  if (typeof value !== "string" || value.trim() === "") throw new Error(`${field} is required`);
+  return value.trim();
+}
+
+function parseProject(raw: unknown): LauncherProject {
+  if (!raw || typeof raw !== "object") throw new Error("project must be an object");
+  const obj = raw as Record<string, unknown>;
+  const favorites = Array.isArray(obj.favorites) ? obj.favorites.map((v) => asString(v, "favorite")) : [];
+  for (const task of favorites) {
+    if (!TASK_RE.test(task)) throw new Error(`Gradle task is invalid: ${task}`);
+  }
+  const gradleCommand = typeof obj.gradleCommand === "string" && obj.gradleCommand.trim()
+    ? obj.gradleCommand.trim()
+    : "./gradlew";
+  if (
+    gradleCommand !== "./gradlew"
+    && !PLAIN_COMMAND_RE.test(gradleCommand)
+    && !ABSOLUTE_COMMAND_RE.test(gradleCommand)
+  ) {
+    throw new Error(`gradleCommand is invalid: ${gradleCommand}`);
+  }
+  return {
+    name: asString(obj.name, "name"),
+    path: requireAbsoluteProjectPath(asString(obj.path, "path")),
+    gradleCommand,
+    favorites,
+  };
+}
+
+export function parseLauncherConfig(raw: unknown): LauncherConfig {
+  if (!raw || typeof raw !== "object") return { projects: [] };
+  const projects = (raw as { projects?: unknown }).projects;
+  if (!Array.isArray(projects)) return { projects: [] };
+  return { projects: projects.map(parseProject) };
+}
