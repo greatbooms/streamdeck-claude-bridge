@@ -3,7 +3,7 @@ import {
   type KeyAction, type KeyDownEvent, type WillAppearEvent,
 } from "@elgato/streamdeck";
 import type { JsonValue } from "@elgato/utils";
-import { runLauncherTask, type BridgeRunClient, type IntelliJRunClient } from "./gradle-bridge-client.js";
+import { runLauncherCommand, type BridgeRunClient, type IntelliJRunClient } from "./gradle-bridge-client.js";
 import { launcherImageDataUri } from "./launcher-image.js";
 import { LauncherState } from "./launcher-state.js";
 import type { LauncherSlot } from "./launcher-types.js";
@@ -77,13 +77,8 @@ export class LauncherAction extends SingletonAction<LauncherSettings> {
       await this.deps.refresh();
       return;
     }
-    if (slot.kind === "task") {
-      await runLauncherTask({
-        projectPath: slot.projectPath,
-        task: slot.task,
-        gradleCommand: slot.gradleCommand,
-        status: slot.status,
-      }, this.deps);
+    if (slot.kind === "command") {
+      await runLauncherCommand(slot.command, this.deps);
     }
   }
 

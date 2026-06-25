@@ -152,13 +152,21 @@ cd "$REPO/streamdeck-plugin" && npx vitest run
 
 ## 5. Dev Launcher 프로파일
 
-IntelliJ/Gradle 실행용 개발 프로파일은 선택 기능이다.
+IntelliJ 프로젝트 실행용 개발 프로파일은 선택 기능이다.
 
 1. `intellij-plugin/build/distributions/`에서 IntelliJ companion plugin zip을 설치한다.
 2. Stream Deck 앱에서 번들된 **Dev Launcher** 프로파일을 설치한다.
-3. `~/Library/Application Support/streamdeck-claude-bridge/launcher.json` 파일을 만든다.
+3. 필요한 경우 `~/Library/Application Support/streamdeck-claude-bridge/launcher.json` 파일로 이름/favorites를 보정한다.
 
-예시:
+기본 동작:
+
+- IntelliJ에 열려 있는 프로젝트를 자동으로 첫 화면에 표시한다.
+- 프로젝트 루트에 `gradlew`, `build.gradle*`, `settings.gradle*`가 있으면 Gradle command를 표시한다.
+- 프로젝트 루트에 `package.json`이 있으면 npm scripts를 표시한다.
+- Gradle command는 IntelliJ에 열려 있으면 IntelliJ Gradle Run으로 실행하고, 실패하면 iTerm2 fallback으로 실행한다.
+- npm command는 같은 이름의 IntelliJ Run Configuration이 있으면 IntelliJ에서 실행하고, 없으면 iTerm2 fallback으로 `npm run <script>`를 실행한다.
+
+`launcher.json` 예시:
 
 ```json
 {
@@ -168,14 +176,20 @@ IntelliJ/Gradle 실행용 개발 프로파일은 선택 기능이다.
       "path": "/Users/eric/workspace/api-server",
       "gradleCommand": "./gradlew",
       "favorites": ["bootRun", "test", "build"]
+    },
+    {
+      "name": "Web",
+      "path": "/Users/eric/workspace/web",
+      "gradleCommand": "./gradlew",
+      "favorites": []
     }
   ]
 }
 ```
 
-- `path`가 IntelliJ에 열려 있으면 IntelliJ 안에서 Gradle task를 실행한다.
-- IntelliJ에 열려 있지 않으면 브리지의 iTerm2 fallback으로 같은 프로젝트 경로에서 실행한다.
-- `favorites`는 Dev Launcher 첫 화면에 우선 노출할 Gradle task 목록이다.
+- `launcher.json`에 없어도 IntelliJ에 열린 프로젝트는 표시된다.
+- `favorites`는 Gradle command를 우선 노출할 때 쓴다.
+- npm scripts는 `start:dev`, `dev`, `start`, `test`, `build`, `lint` 순으로 우선 표시된다.
 
 ---
 

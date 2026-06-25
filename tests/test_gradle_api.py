@@ -17,6 +17,8 @@ class FakeGradleRunner:
 
     async def run(self, req):
         self.commands.append(req)
+        if hasattr(req, "script"):
+            return {"ok": True, "command": f"npm run {req.script}"}
         return {"ok": True, "command": f"{req.gradle_command} {req.task}"}
 
 
@@ -25,7 +27,7 @@ async def client(aiohttp_client, tmp_path):
     from bridge.state import PendingStore
     from bridge.ws import Hub
     runner = FakeGradleRunner()
-    app = make_app(PendingStore(), Hub(), FakeInjector(), gradle_runner=runner, auth_token="secret")
+    app = make_app(PendingStore(), Hub(), FakeInjector(), gradle_runner=runner, npm_runner=runner, auth_token="secret")
     app["fake_gradle_runner"] = runner
     app["project_dir"] = tmp_path
     return await aiohttp_client(app)
@@ -96,6 +98,51 @@ async def test_gradle_iterm_endpoint_reports_runner_unavailable(aiohttp_client, 
     assert resp.status == 503
     body = await resp.json()
     assert body == {"ok": False, "error": "iTerm2 injector loop not ready"}
+
+
+async def test_npm_iterm_endpoint_reports_runner_errors(aiohttp_client, tmp_path):
+    class FailingRunner:
+        async def run(self, req):
+            raise ValueError("iTerm2 rejected command")
+
+    from bridge.state import PendingStore
+    from bridge.ws import Hub
+
+    project = tmp_path / "web"
+    project.mkdir()
+    app = make_app(PendingStore(), Hub(), FakeInjector(), npm_runner=FailingRunner(), auth_token="secret")
+    client = await aiohttp_client(app)
+    resp = await client.post(
+        "/run/npm/iterm",
+        json={"cwd": str(project), "script": "build"},
+        headers={"X-StreamDeck-Bridge-Token": "secret"},
+    )
+    assert resp.status == 503
+    assert await resp.json() == {"ok": False, "error": "iTerm2 rejected command"}
+
+
+async def test_npm_iterm_endpoint_runs_valid_request(client):
+    project = client.app["project_dir"] / "web"
+    project.mkdir()
+    resp = await client.post(
+        "/run/npm/iterm",
+        json={"cwd": str(project), "script": "start:dev"},
+        headers={"X-StreamDeck-Bridge-Token": "secret"},
+    )
+    assert resp.status == 200
+    assert await resp.json() == {"ok": True, "command": "npm run start:dev"}
+    assert client.app["fake_gradle_runner"].commands[0].script == "start:dev"
+
+
+async def test_npm_iterm_endpoint_rejects_unsafe_script(client):
+    project = client.app["project_dir"] / "web"
+    project.mkdir()
+    resp = await client.post(
+        "/run/npm/iterm",
+        json={"cwd": str(project), "script": "start:dev; rm -rf /"},
+        headers={"X-StreamDeck-Bridge-Token": "secret"},
+    )
+    assert resp.status == 400
 
 
 async def test_iterm_gradle_runner_waits_for_threadsafe_future(tmp_path):

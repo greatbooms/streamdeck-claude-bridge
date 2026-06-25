@@ -18,10 +18,10 @@ function colors(slot: LauncherSlot): { bg: string; fg: string; sub: string } {
   if (slot.kind === "project") {
     return { bg: "#374151", fg: "#ffffff", sub: "#d1d5db" };
   }
-  if (slot.kind === "task" && slot.status === "OPEN") {
+  if (slot.kind === "command" && slot.status === "OPEN") {
     return { bg: "#1d4ed8", fg: "#ffffff", sub: "#dbeafe" };
   }
-  if (slot.kind === "task") {
+  if (slot.kind === "command") {
     return { bg: "#713f12", fg: "#ffffff", sub: "#fde68a" };
   }
   if (slot.kind === "control") {
@@ -39,7 +39,7 @@ function fit(text: string, max: number): string {
 
 function title(slot: LauncherSlot): string {
   if (slot.kind === "project") return slot.label;
-  if (slot.kind === "task") return slot.task;
+  if (slot.kind === "command") return slot.label;
   if (slot.kind === "control") return slot.label;
   if (slot.kind === "message") return slot.label;
   return "";
@@ -47,7 +47,7 @@ function title(slot: LauncherSlot): string {
 
 function footer(slot: LauncherSlot): string {
   if (slot.kind === "project") return slot.status;
-  if (slot.kind === "task") return slot.status;
+  if (slot.kind === "command") return slot.command.kind === "npm" ? `npm ${slot.status}` : slot.status;
   if (slot.kind === "control") return slot.action;
   if (slot.kind === "message") return slot.detail;
   return "";

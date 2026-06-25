@@ -58,6 +58,31 @@ describe("IntelliJClient", () => {
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ path: "/repo/api", task: "bootRun" });
   });
 
+  it("posts npm run requests and returns true on ok", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const client = new IntelliJClient("http://idea", async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response("", { status: 200 });
+    }, () => "secret");
+
+    await expect(client.runNpm("/repo/front", "start:dev")).resolves.toBe(true);
+    expect(calls[0].url).toBe("http://idea/projects/npm/run");
+    expect(calls[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ path: "/repo/front", script: "start:dev" });
+  });
+
+  it("returns false from runNpm when IntelliJ cannot run it", async () => {
+    const notFound = new IntelliJClient("http://idea", async () => new Response("missing", { status: 404 }), () => "secret");
+    const noConfig = new IntelliJClient("http://idea", async () => new Response("no config", { status: 409 }), () => "secret");
+    const unreachable = new IntelliJClient("http://idea", async () => {
+      throw new TypeError("connection refused");
+    }, () => "secret");
+
+    await expect(notFound.runNpm("/repo/front", "dev")).resolves.toBe(false);
+    await expect(noConfig.runNpm("/repo/front", "dev")).resolves.toBe(false);
+    await expect(unreachable.runNpm("/repo/front", "dev")).resolves.toBe(false);
+  });
+
   it("returns empty projects and tasks when IntelliJ is unreachable", async () => {
     const client = new IntelliJClient("http://idea", async () => {
       throw new TypeError("connection refused");

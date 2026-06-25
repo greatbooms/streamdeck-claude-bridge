@@ -17,6 +17,7 @@ import { LauncherAction } from "./launcher-action.js";
 import { loadLauncherConfigFromText, parseLauncherConfig } from "./launcher-config.js";
 import { LauncherState } from "./launcher-state.js";
 import type { LauncherConfig } from "./launcher-types.js";
+import { detectProjectCapabilities } from "./project-detector.js";
 
 const DEFAULT_PROFILE = "Claude Bridge";
 const URL = "ws://127.0.0.1:8787/ws";
@@ -86,6 +87,12 @@ async function refreshLauncher(): Promise<void> {
   launcherState.setConfigError(configLoad.error);
   const projects = await intellijClient.projects();
   launcherState.applyIntelliJProjects(projects);
+  for (const project of projects) {
+    launcherState.applyProjectCapabilities(project.path, detectProjectCapabilities(project.path));
+  }
+  for (const project of configLoad.config.projects) {
+    launcherState.applyProjectCapabilities(project.path, detectProjectCapabilities(project.path));
+  }
   const page = launcherState.currentPage();
   if (!configLoad.error && page.kind === "project") {
     launcherState.applyProjectTasks(page.path, await intellijClient.tasks(page.path));

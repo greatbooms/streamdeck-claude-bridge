@@ -52,4 +52,21 @@ export class IntelliJClient {
     if (!res.ok) throw new Error(`IntelliJ Gradle run failed: ${res.status}`);
     return true;
   }
+
+  async runNpm(path: string, script: string): Promise<boolean> {
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.baseUrl}/projects/npm/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders(this.tokenProvider) },
+        body: JSON.stringify({ path, script }),
+      });
+    } catch {
+      return false;
+    }
+
+    if (res.status === 404 || res.status === 409) return false;
+    if (!res.ok) throw new Error(`IntelliJ npm run failed: ${res.status}`);
+    return true;
+  }
 }

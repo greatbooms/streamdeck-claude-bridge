@@ -34,6 +34,7 @@ class BridgeServerService : Disposable {
                     "/projects" -> exchange.json(200, ProjectRegistry.projectsJson())
                     "/projects/tasks" -> handleProjectTasks(exchange)
                     "/projects/run" -> handleProjectRun(exchange)
+                    "/projects/npm/run" -> handleNpmRun(exchange)
                     else -> exchange.json(404, """{"ok":false,"error":"not found"}""")
                 }
             }
@@ -86,6 +87,30 @@ private fun handleProjectRun(exchange: HttpExchange) {
         return
     }
     GradleTaskRunner.run(project, task)
+    exchange.json(200, """{"ok":true}""")
+}
+
+private fun handleNpmRun(exchange: HttpExchange) {
+    if (exchange.requestMethod != "POST") {
+        exchange.json(405, """{"ok":false,"error":"method not allowed"}""")
+        return
+    }
+    val body = exchange.requestBody.bufferedReader().readText()
+    val path = Json.field(body, "path")
+    val script = Json.field(body, "script")
+    if (path == null || script == null || !NpmRunConfigurationRunner.isValidScript(script)) {
+        exchange.json(400, """{"ok":false,"error":"invalid request"}""")
+        return
+    }
+    val project = ProjectRegistry.findByPath(path)
+    if (project == null) {
+        exchange.json(404, """{"ok":false,"error":"project not open"}""")
+        return
+    }
+    if (!NpmRunConfigurationRunner.run(project, script)) {
+        exchange.json(409, """{"ok":false,"error":"npm run configuration not found"}""")
+        return
+    }
     exchange.json(200, """{"ok":true}""")
 }
 
