@@ -17,9 +17,20 @@ function parseProject(raw: unknown): LauncherProject {
   for (const task of favorites) {
     if (!TASK_RE.test(task)) throw new Error(`Gradle task is invalid: ${task}`);
   }
-  const gradleCommand = typeof obj.gradleCommand === "string" && obj.gradleCommand.trim()
-    ? obj.gradleCommand.trim()
-    : "./gradlew";
+  const gradleCommand = parseGradleCommand(obj.gradleCommand);
+  return {
+    name: asString(obj.name, "name"),
+    path: requireAbsoluteProjectPath(asString(obj.path, "path")),
+    gradleCommand,
+    favorites,
+  };
+}
+
+function parseGradleCommand(value: unknown): string {
+  if (value === undefined || value === null) return "./gradlew";
+  if (typeof value !== "string") throw new Error("gradleCommand must be a string");
+  const gradleCommand = value.trim();
+  if (gradleCommand === "") throw new Error("gradleCommand is required");
   if (
     gradleCommand !== "./gradlew"
     && !PLAIN_COMMAND_RE.test(gradleCommand)
@@ -27,12 +38,7 @@ function parseProject(raw: unknown): LauncherProject {
   ) {
     throw new Error(`gradleCommand is invalid: ${gradleCommand}`);
   }
-  return {
-    name: asString(obj.name, "name"),
-    path: requireAbsoluteProjectPath(asString(obj.path, "path")),
-    gradleCommand,
-    favorites,
-  };
+  return gradleCommand;
 }
 
 export function parseLauncherConfig(raw: unknown): LauncherConfig {

@@ -29,7 +29,7 @@ describe("parseLauncherConfig", () => {
   });
 
   it("rejects unsafe gradle commands", () => {
-    for (const gradleCommand of ["./gradlew --scan", "/tmp/gradlew>out", "/tmp/gradlew<in"]) {
+    for (const gradleCommand of ["./gradlew --scan", "/tmp/gradlew>out", "/tmp/gradlew<in", "", "   ", 123]) {
       expect(() => parseLauncherConfig({
         projects: [{ name: "API", path: "/repo/api", gradleCommand }],
       })).toThrow("gradleCommand");
