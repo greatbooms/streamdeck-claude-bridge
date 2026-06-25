@@ -44,11 +44,20 @@
       "Tooltip": "Codex 권한 승인 로고 (표시 전용)",
       "Controllers": ["Keypad"],
       "States": [{ "Image": "imgs/actions/logo/key" }]
+    },
+    {
+      "Name": "Project Launcher Tile",
+      "UUID": "com.shinsanghoon.claude-bridge.launcher",
+      "Icon": "imgs/actions/logo/icon",
+      "Tooltip": "프로젝트/Gradle 런처 타일",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/actions/logo/key" }]
     }
   ],
   "Profiles": [
     { "Name": "Claude Bridge", "DeviceType": 0, "Readonly": false },
-    { "Name": "Codex Bridge", "DeviceType": 0, "Readonly": false }
+    { "Name": "Codex Bridge", "DeviceType": 0, "Readonly": false },
+    { "Name": "Dev Launcher", "DeviceType": 0, "Readonly": false }
   ],
   "Category": "Claude Bridge",
   "CategoryIcon": "imgs/plugin/category-icon",
