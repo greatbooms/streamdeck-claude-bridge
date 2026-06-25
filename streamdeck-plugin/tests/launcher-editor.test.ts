@@ -16,6 +16,17 @@ describe("parseLauncherEditorRequest", () => {
       type: "launcherEditorRefresh",
       projectPath: "/repo/api",
     });
+
+    expect(parseLauncherEditorRequest({ type: "launcherEditorRefresh" })).toEqual({
+      type: "launcherEditorRefresh",
+    });
+
+    expect(parseLauncherEditorRequest({
+      type: "launcherEditorRefresh",
+      projectPath: "   ",
+    })).toEqual({
+      type: "launcherEditorRefresh",
+    });
   });
 
   it("parses save requests and trims arrays", () => {
@@ -36,5 +47,21 @@ describe("parseLauncherEditorRequest", () => {
     expect(parseLauncherEditorRequest(null)).toBeNull();
     expect(parseLauncherEditorRequest({ type: "saveProjectPreferences", projectPath: "/repo/api" })).toBeNull();
     expect(parseLauncherEditorRequest({ type: "unknown" })).toBeNull();
+  });
+
+  it("returns null for save requests with non-string array entries", () => {
+    expect(parseLauncherEditorRequest({
+      type: "saveProjectPreferences",
+      projectPath: "/repo/api",
+      favorites: [123],
+      npmOrder: ["dev"],
+    })).toBeNull();
+
+    expect(parseLauncherEditorRequest({
+      type: "saveProjectPreferences",
+      projectPath: "/repo/api",
+      favorites: ["bootRun"],
+      npmOrder: ["dev", null],
+    })).toBeNull();
   });
 });
