@@ -29,6 +29,7 @@ class BridgeServerService : Disposable {
                 when (exchange.requestURI.path) {
                     "/projects" -> exchange.json(200, ProjectRegistry.projectsJson())
                     "/projects/tasks" -> handleProjectTasks(exchange)
+                    "/projects/run" -> handleProjectRun(exchange)
                     else -> exchange.json(404, """{"ok":false,"error":"not found"}""")
                 }
             }
@@ -61,6 +62,27 @@ private fun handleProjectTasks(exchange: HttpExchange) {
         return
     }
     exchange.json(200, GradleTaskDetector.tasksJson(path))
+}
+
+private fun handleProjectRun(exchange: HttpExchange) {
+    if (exchange.requestMethod != "POST") {
+        exchange.json(405, """{"ok":false,"error":"method not allowed"}""")
+        return
+    }
+    val body = exchange.requestBody.bufferedReader().readText()
+    val path = Json.field(body, "path")
+    val task = Json.field(body, "task")
+    if (path == null || task == null || !GradleTaskRunner.isValidTask(task)) {
+        exchange.json(400, """{"ok":false,"error":"invalid request"}""")
+        return
+    }
+    val project = ProjectRegistry.findByPath(path)
+    if (project == null) {
+        exchange.json(404, """{"ok":false,"error":"project not open"}""")
+        return
+    }
+    GradleTaskRunner.run(project, task)
+    exchange.json(200, """{"ok":true}""")
 }
 
 fun HttpExchange.json(status: Int, body: String) {

@@ -20,4 +20,9 @@ object Json {
         fields.entries.joinToString(separator = ",", prefix = "{", postfix = "}") { (key, value) ->
             "${string(key)}:$value"
         }
+
+    fun field(body: String, name: String): String? {
+        val pattern = Regex(""""${Regex.escape(name)}"\s*:\s*"([^"]*)"""")
+        return pattern.find(body)?.groupValues?.get(1)?.replace("\\\"", "\"")
+    }
 }

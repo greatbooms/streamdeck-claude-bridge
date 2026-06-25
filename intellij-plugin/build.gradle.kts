@@ -18,6 +18,7 @@ dependencies {
     intellijPlatform {
         intellijIdea("2026.1.3")
         bundledPlugin("com.intellij.java")
+        bundledPlugin("com.intellij.gradle")
         bundledPlugin("org.jetbrains.plugins.gradle")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }

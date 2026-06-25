@@ -19,4 +19,11 @@ class JsonTest {
             Json.obj(mapOf("name" to Json.string("api"), "ok" to "true")),
         )
     }
+
+    @Test
+    fun extractsStringFields() {
+        val body = """{"path":"/repo/api","task":"bootRun"}"""
+        assertEquals("/repo/api", Json.field(body, "path"))
+        assertEquals("bootRun", Json.field(body, "task"))
+    }
 }
