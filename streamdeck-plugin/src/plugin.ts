@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import streamDeck from "@elgato/streamdeck";
 import WebSocket from "ws";
 import { BridgeClient, type WebSocketLike } from "./bridge-client.js";
@@ -14,10 +11,9 @@ import { syncDeckState } from "./plugin-sync.js";
 import { GradleBridgeClient } from "./gradle-bridge-client.js";
 import { IntelliJClient } from "./intellij-client.js";
 import { LauncherAction } from "./launcher-action.js";
-import { loadLauncherConfigFromText, parseLauncherConfig } from "./launcher-config.js";
+import { FileLauncherConfigStore } from "./launcher-config-store.js";
 import { LAUNCHER_REFRESH_INTERVAL_MS } from "./launcher-refresh-policy.js";
 import { LauncherState } from "./launcher-state.js";
-import type { LauncherConfig } from "./launcher-types.js";
 import { detectProjectCapabilities } from "./project-detector.js";
 
 const DEFAULT_PROFILE = "Claude Bridge";
@@ -27,36 +23,11 @@ const URL = "ws://127.0.0.1:8787/ws";
 const client = new BridgeClient(URL, (u) => new WebSocket(u) as unknown as WebSocketLike);
 const intellijClient = new IntelliJClient();
 const gradleBridgeClient = new GradleBridgeClient();
+const launcherConfigStore = new FileLauncherConfigStore();
 
-interface LauncherConfigLoad {
-  config: LauncherConfig;
-  error: string | null;
-}
-
-const initialLauncherConfig = loadLauncherConfig();
+const initialLauncherConfig = launcherConfigStore.load();
 const launcherState = new LauncherState(initialLauncherConfig.config);
 launcherState.setConfigError(initialLauncherConfig.error);
-
-function launcherConfigPath(): string {
-  return path.join(os.homedir(), "Library", "Application Support", "streamdeck-claude-bridge", "launcher.json");
-}
-
-function emptyLauncherConfig(): LauncherConfig {
-  return parseLauncherConfig({ projects: [] });
-}
-
-function loadLauncherConfig(): LauncherConfigLoad {
-  try {
-    return { config: loadLauncherConfigFromText(fs.readFileSync(launcherConfigPath(), "utf8")), error: null };
-  } catch (err: unknown) {
-    const code = (err as NodeJS.ErrnoException).code;
-    if (code === "ENOENT") return { config: emptyLauncherConfig(), error: null };
-    const message = err instanceof Error ? err.message : String(err);
-    const error = `launcher.json: ${message}`;
-    streamDeck.logger.error(`Launcher config load failed at ${launcherConfigPath()}: ${message}`);
-    return { config: emptyLauncherConfig(), error };
-  }
-}
 
 function firstDeviceId(): string | null {
   // 번들 프로파일은 DeviceType 0(표준 Stream Deck)용이므로 그 타입의 연결된 기기를 우선 선택.
@@ -83,9 +54,10 @@ const questionAction = new QuestionAction(client);
 let launcherRefreshInFlight = false;
 
 async function refreshLauncher(): Promise<void> {
-  const configLoad = loadLauncherConfig();
+  const configLoad = launcherConfigStore.load();
   launcherState.applyConfig(configLoad.config);
   launcherState.setConfigError(configLoad.error);
+  if (configLoad.error) streamDeck.logger.error(`Launcher config load failed: ${configLoad.error}`);
   const projects = await intellijClient.projects();
   launcherState.applyIntelliJProjects(projects);
   for (const project of projects) {
@@ -117,6 +89,14 @@ const launcherAction = new LauncherAction(launcherState, {
   intellij: intellijClient,
   bridge: gradleBridgeClient,
   refresh: refreshLauncher,
+  saveProjectPreferences: async (projectPath, preferences) => {
+    const result = launcherConfigStore.saveProjectPreferences(projectPath, preferences);
+    launcherState.applyConfig(result.config);
+    launcherState.setConfigError(result.error);
+    if (result.error) streamDeck.logger.error(result.error);
+    return { error: result.error };
+  },
+  sendToPropertyInspector: (payload) => streamDeck.ui.sendToPropertyInspector(payload),
   log: (m) => streamDeck.logger.error(m),
 });
 

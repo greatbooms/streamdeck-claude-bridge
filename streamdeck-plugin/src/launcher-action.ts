@@ -1,16 +1,18 @@
 import {
   action, SingletonAction,
-  type KeyAction, type KeyDownEvent, type WillAppearEvent,
+  type KeyAction, type KeyDownEvent, type PropertyInspectorDidAppearEvent, type SendToPluginEvent, type WillAppearEvent,
 } from "@elgato/streamdeck";
 import type { JsonValue } from "@elgato/utils";
 import { runLauncherCommand, type BridgeRunClient, type IntelliJRunClient } from "./gradle-bridge-client.js";
+import { parseLauncherEditorRequest, type LauncherEditorResponse } from "./launcher-editor.js";
 import { launcherCommandErrorMessage } from "./launcher-error.js";
 import { launcherImageDataUri } from "./launcher-image.js";
 import { LauncherState } from "./launcher-state.js";
-import type { LauncherSlot } from "./launcher-types.js";
+import type { LauncherProjectPreferences, LauncherSlot } from "./launcher-types.js";
 
 interface LauncherSettings {
   slot?: number;
+  projectPath?: string;
   [key: string]: JsonValue;
 }
 
@@ -18,6 +20,8 @@ interface LauncherDeps {
   intellij: IntelliJRunClient;
   bridge: BridgeRunClient;
   refresh: () => Promise<void>;
+  saveProjectPreferences?: (projectPath: string, preferences: LauncherProjectPreferences) => Promise<{ error: string | null }>;
+  sendToPropertyInspector?: (payload: JsonValue) => Promise<void>;
   log?: (message: string) => void;
 }
 
@@ -49,6 +53,49 @@ export class LauncherAction extends SingletonAction<LauncherSettings> {
       this.deps.log?.(launcherCommandErrorMessage(err));
       await ev.action.showAlert();
     }
+  }
+
+  override async onPropertyInspectorDidAppear(ev: PropertyInspectorDidAppearEvent<LauncherSettings>): Promise<void> {
+    const settings = await ev.action.getSettings<LauncherSettings>();
+    await this.sendEditorSnapshot(settings.projectPath);
+  }
+
+  override async onSendToPlugin(ev: SendToPluginEvent<JsonValue, LauncherSettings>): Promise<void> {
+    const request = parseLauncherEditorRequest(ev.payload);
+    if (!request) {
+      await this.sendEditorError("Invalid launcher editor request");
+      return;
+    }
+
+    if (request.type === "launcherEditorReady") {
+      const settings = await ev.action.getSettings<LauncherSettings>();
+      await this.sendEditorSnapshot(settings.projectPath);
+      return;
+    }
+
+    if (request.type === "launcherEditorRefresh") {
+      await this.deps.refresh();
+      await this.sendEditorSnapshot(request.projectPath, "Refreshed");
+      return;
+    }
+
+    if (!this.deps.saveProjectPreferences) {
+      await this.sendEditorError("Launcher editor is not configured");
+      return;
+    }
+
+    const result = await this.deps.saveProjectPreferences(request.projectPath, {
+      favorites: request.favorites,
+      npmOrder: request.npmOrder,
+    });
+    if (result.error) {
+      await this.sendEditorSnapshot(request.projectPath, null, result.error);
+      return;
+    }
+
+    await ev.action.setSettings({ ...(await ev.action.getSettings<LauncherSettings>()), projectPath: request.projectPath });
+    await this.deps.refresh();
+    await this.sendEditorSnapshot(request.projectPath, "Saved");
   }
 
   async refreshAll(): Promise<void> {
@@ -87,6 +134,25 @@ export class LauncherAction extends SingletonAction<LauncherSettings> {
 
   private async refresh(a: KeyAction<LauncherSettings>, slot: number): Promise<void> {
     await a.setImage(launcherImageDataUri(this.state.slots()[slot] ?? { kind: "empty" }));
+  }
+
+  private async sendEditorSnapshot(selectedPath?: string, status: string | null = null, error: string | null = null): Promise<void> {
+    const snapshot = arguments.length >= 3
+      ? this.state.editorSnapshot(selectedPath, status, error)
+      : this.state.editorSnapshot(selectedPath, status);
+    await this.sendToPropertyInspector({
+      type: "launcherEditorSnapshot",
+      ...snapshot,
+    });
+  }
+
+  private async sendEditorError(error: string): Promise<void> {
+    await this.sendToPropertyInspector({ type: "launcherEditorError", error });
+  }
+
+  private async sendToPropertyInspector(payload: LauncherEditorResponse): Promise<void> {
+    if (!this.deps.sendToPropertyInspector) return;
+    await this.deps.sendToPropertyInspector(payload as unknown as JsonValue);
   }
 
   private slotFor(ev: WillAppearEvent<LauncherSettings>): number {
