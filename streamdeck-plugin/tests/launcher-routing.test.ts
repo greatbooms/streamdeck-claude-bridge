@@ -1,0 +1,71 @@
+import { describe, expect, it } from "vitest";
+import { GradleBridgeClient, runLauncherTask } from "../src/gradle-bridge-client.js";
+
+describe("GradleBridgeClient", () => {
+  it("posts Gradle iTerm fallback requests", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const client = new GradleBridgeClient("http://bridge", async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response("", { status: 202 });
+    });
+
+    await client.runGradleInIterm("/repo/api", "./gradlew", ":api:bootRun");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe("http://bridge/run/gradle/iterm");
+    expect(calls[0].init?.method).toBe("POST");
+    expect(calls[0].init?.headers).toEqual({ "Content-Type": "application/json" });
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({
+      cwd: "/repo/api",
+      gradleCommand: "./gradlew",
+      task: ":api:bootRun",
+    });
+  });
+
+  it("throws on bridge non-ok responses", async () => {
+    const client = new GradleBridgeClient("http://bridge", async () => new Response("bad", { status: 500 }));
+
+    await expect(client.runGradleInIterm("/repo/api", "./gradlew", "test")).rejects.toThrow("Bridge iTerm fallback failed: 500");
+  });
+});
+
+describe("runLauncherTask", () => {
+  it("uses IntelliJ when project is open", async () => {
+    const events: string[] = [];
+    await runLauncherTask(
+      { projectPath: "/repo/api", task: "bootRun", gradleCommand: "./gradlew", status: "OPEN" },
+      {
+        intellij: { runGradle: async (path, task) => { events.push(`intellij:${path}:${task}`); return true; } },
+        bridge: { runGradleInIterm: async () => { events.push("bridge"); } },
+      },
+    );
+
+    expect(events).toEqual(["intellij:/repo/api:bootRun"]);
+  });
+
+  it("falls back to bridge when IntelliJ reports not open", async () => {
+    const events: string[] = [];
+    await runLauncherTask(
+      { projectPath: "/repo/api", task: "bootRun", gradleCommand: "./gradlew", status: "OPEN" },
+      {
+        intellij: { runGradle: async () => false },
+        bridge: { runGradleInIterm: async (path, gradleCommand, task) => { events.push(`bridge:${path}:${gradleCommand}:${task}`); } },
+      },
+    );
+
+    expect(events).toEqual(["bridge:/repo/api:./gradlew:bootRun"]);
+  });
+
+  it("uses bridge directly when status is iTerm", async () => {
+    const events: string[] = [];
+    await runLauncherTask(
+      { projectPath: "/repo/admin", task: "test", gradleCommand: "./gradlew", status: "iTerm" },
+      {
+        intellij: { runGradle: async () => { events.push("intellij"); return true; } },
+        bridge: { runGradleInIterm: async (path, gradleCommand, task) => { events.push(`bridge:${path}:${gradleCommand}:${task}`); } },
+      },
+    );
+
+    expect(events).toEqual(["bridge:/repo/admin:./gradlew:test"]);
+  });
+});
