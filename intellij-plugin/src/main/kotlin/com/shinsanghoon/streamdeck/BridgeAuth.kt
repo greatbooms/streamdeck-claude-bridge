@@ -9,6 +9,8 @@ import java.util.Base64
 
 object BridgeAuth {
     const val HEADER = "X-StreamDeck-Bridge-Token"
+    @Volatile
+    private var cachedToken: String? = null
 
     fun isAuthorized(actual: String?, expected: String = token()): Boolean =
         expected.isNotBlank() && actual == expected
@@ -17,6 +19,14 @@ object BridgeAuth {
         isAuthorized(exchange.requestHeaders.getFirst(HEADER))
 
     fun token(): String {
+        cachedToken?.let { return it }
+        return synchronized(this) {
+            cachedToken?.let { return@synchronized it }
+            loadOrCreateToken().also { cachedToken = it }
+        }
+    }
+
+    private fun loadOrCreateToken(): String {
         val env = System.getenv("STREAMDECK_BRIDGE_TOKEN")?.trim()
         if (!env.isNullOrEmpty()) return env
 

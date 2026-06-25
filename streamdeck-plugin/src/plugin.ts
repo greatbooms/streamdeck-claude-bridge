@@ -15,6 +15,7 @@ import { GradleBridgeClient } from "./gradle-bridge-client.js";
 import { IntelliJClient } from "./intellij-client.js";
 import { LauncherAction } from "./launcher-action.js";
 import { loadLauncherConfigFromText, parseLauncherConfig } from "./launcher-config.js";
+import { LAUNCHER_REFRESH_INTERVAL_MS } from "./launcher-refresh-policy.js";
 import { LauncherState } from "./launcher-state.js";
 import type { LauncherConfig } from "./launcher-types.js";
 import { detectProjectCapabilities } from "./project-detector.js";
@@ -116,6 +117,7 @@ const launcherAction = new LauncherAction(launcherState, {
   intellij: intellijClient,
   bridge: gradleBridgeClient,
   refresh: refreshLauncher,
+  log: (m) => streamDeck.logger.error(m),
 });
 
 client.onChange(() => {
@@ -137,4 +139,4 @@ streamDeck.actions.registerAction(new CodexLogoAction());
 streamDeck.connect();
 client.start();
 refreshLauncherSafely();
-setInterval(refreshLauncherSafely, 5000);
+setInterval(refreshLauncherSafely, LAUNCHER_REFRESH_INTERVAL_MS);

@@ -38,10 +38,10 @@ describe("GradleBridgeClient", () => {
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ cwd: "/repo/web", script: "start:dev" });
   });
 
-  it("throws on bridge non-ok responses", async () => {
-    const client = new GradleBridgeClient("http://bridge", async () => new Response("bad", { status: 500 }), () => "secret");
+  it("throws bridge response details on non-ok responses", async () => {
+    const client = new GradleBridgeClient("http://bridge", async () => new Response(JSON.stringify({ ok: false, error: "iTerm is unavailable" }), { status: 503 }), () => "secret");
 
-    await expect(client.runGradleInIterm("/repo/api", "./gradlew", "test")).rejects.toThrow("Bridge iTerm fallback failed: 500");
+    await expect(client.runGradleInIterm("/repo/api", "./gradlew", "test")).rejects.toThrow("Bridge iTerm fallback failed: 503 iTerm is unavailable");
   });
 });
 

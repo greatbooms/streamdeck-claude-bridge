@@ -4,6 +4,7 @@ import {
 } from "@elgato/streamdeck";
 import type { JsonValue } from "@elgato/utils";
 import { runLauncherCommand, type BridgeRunClient, type IntelliJRunClient } from "./gradle-bridge-client.js";
+import { launcherCommandErrorMessage } from "./launcher-error.js";
 import { launcherImageDataUri } from "./launcher-image.js";
 import { LauncherState } from "./launcher-state.js";
 import type { LauncherSlot } from "./launcher-types.js";
@@ -17,6 +18,7 @@ interface LauncherDeps {
   intellij: IntelliJRunClient;
   bridge: BridgeRunClient;
   refresh: () => Promise<void>;
+  log?: (message: string) => void;
 }
 
 @action({ UUID: "com.shinsanghoon.claude-bridge.launcher" })
@@ -43,7 +45,8 @@ export class LauncherAction extends SingletonAction<LauncherSettings> {
     try {
       await this.handle(model);
       await this.refreshAll();
-    } catch {
+    } catch (err: unknown) {
+      this.deps.log?.(launcherCommandErrorMessage(err));
       await ev.action.showAlert();
     }
   }

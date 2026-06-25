@@ -34,7 +34,7 @@ export class GradleBridgeClient implements BridgeRunClient {
       body: JSON.stringify({ cwd: path, gradleCommand, task }),
     });
 
-    if (!res.ok) throw new Error(`Bridge iTerm fallback failed: ${res.status}`);
+    if (!res.ok) throw new Error(`Bridge iTerm fallback failed: ${res.status}${await responseErrorDetail(res)}`);
   }
 
   async runNpmInIterm(path: string, script: string): Promise<void> {
@@ -44,8 +44,27 @@ export class GradleBridgeClient implements BridgeRunClient {
       body: JSON.stringify({ cwd: path, script }),
     });
 
-    if (!res.ok) throw new Error(`Bridge npm iTerm fallback failed: ${res.status}`);
+    if (!res.ok) throw new Error(`Bridge npm iTerm fallback failed: ${res.status}${await responseErrorDetail(res)}`);
   }
+}
+
+async function responseErrorDetail(res: Response): Promise<string> {
+  let text = "";
+  try {
+    text = (await res.text()).trim();
+  } catch {
+    return "";
+  }
+  if (!text) return "";
+  try {
+    const body = JSON.parse(text) as { error?: unknown };
+    if (typeof body.error === "string" && body.error.trim()) {
+      return ` ${body.error.trim()}`;
+    }
+  } catch {
+    // Fall through to plain response text.
+  }
+  return ` ${text}`;
 }
 
 export async function runLauncherCommand(
