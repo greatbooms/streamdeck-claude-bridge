@@ -12,4 +12,20 @@ class GradleTaskRunnerTest {
         assertFalse(GradleTaskRunner.isValidTask("bootRun --scan"))
         assertFalse(GradleTaskRunner.isValidTask("test; bad"))
     }
+
+    @Test
+    fun schedulesGradleRunInsteadOfRunningOnTheCallerThread() {
+        var scheduled: Runnable? = null
+        var executed = false
+
+        GradleTaskRunner.scheduleRun(
+            task = "bootRun",
+            schedule = { scheduled = it },
+            run = { executed = true },
+        )
+
+        assertFalse(executed)
+        scheduled?.run()
+        assertTrue(executed)
+    }
 }
