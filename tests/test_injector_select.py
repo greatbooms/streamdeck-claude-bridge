@@ -15,6 +15,25 @@ class FakeApp:
         return self._sessions.get(sid)
 
 
+class FakeTab:
+    def __init__(self, session):
+        self.current_session = session
+
+
+class FakeWindow:
+    def __init__(self, session):
+        self.current_tab = FakeTab(session)
+
+
+class FakeWindowApp(FakeApp):
+    def __init__(self, session):
+        super().__init__({})
+        self.window = FakeWindow(session)
+
+    async def async_create_window(self):
+        return self.window
+
+
 async def test_select_sends_keys_separately():
     # 방향키와 Enter 를 붙여 보내면 TUI 가 down 을 놓치므로, 개별 전송이어야 한다.
     sess = FakeSession()
@@ -47,3 +66,11 @@ async def test_select_without_app_raises():
     inj = ItermInjector()
     with pytest.raises(RuntimeError):
         await inj._select("U1", 1)
+
+
+async def test_run_command_opens_window_and_sends_command():
+    sess = FakeSession()
+    inj = ItermInjector()
+    inj._app = FakeWindowApp(sess)
+    await inj._run_command("cd /tmp && ./gradlew test")
+    assert sess.sent == ["cd /tmp && ./gradlew test\n"]

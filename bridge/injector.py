@@ -60,12 +60,22 @@ class ItermInjector:
             raise SessionNotFound(session)
         await s.async_send_text(ESC)
 
+    async def _run_command(self, command: str):
+        if self._app is None:
+            raise RuntimeError("iTerm2 app not connected")
+        window = await self._app.async_create_window()
+        session = window.current_tab.current_session
+        await session.async_send_text(command + "\n")
+
     # --- 스레드세이프 제출 (메인 루프에서 호출) ---
     def submit_select(self, session: str, index: int):
         return asyncio.run_coroutine_threadsafe(self._select(session, index), self._require_loop())
 
     def submit_cancel(self, session: str):
         return asyncio.run_coroutine_threadsafe(self._cancel(session), self._require_loop())
+
+    def submit_run_command(self, command: str):
+        return asyncio.run_coroutine_threadsafe(self._run_command(command), self._require_loop())
 
     def _require_loop(self):
         if self._loop is None:

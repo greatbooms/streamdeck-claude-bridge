@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 import re
@@ -61,3 +62,14 @@ def parse_gradle_run_request(body: dict) -> GradleRunRequest:
 
 def build_visible_command(req: GradleRunRequest) -> str:
     return f"cd {shlex.quote(str(req.cwd))} && {shlex.quote(req.gradle_command)} {shlex.quote(req.task)}"
+
+
+class ItermGradleRunner:
+    def __init__(self, injector):
+        self.injector = injector
+
+    async def run(self, req: GradleRunRequest) -> dict:
+        visible = build_visible_command(req)
+        fut = self.injector.submit_run_command(visible)
+        await asyncio.wrap_future(fut)
+        return {"ok": True, "command": visible}
