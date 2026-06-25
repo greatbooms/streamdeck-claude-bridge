@@ -1,0 +1,14 @@
+<idea-plugin>
+  <id>com.shinsanghoon.streamdeck.intellij-companion</id>
+  <name>Stream Deck IntelliJ Companion</name>
+  <vendor>shinsanghoon</vendor>
+
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.java</depends>
+  <depends>org.jetbrains.plugins.gradle</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <applicationService serviceImplementation="com.shinsanghoon.streamdeck.BridgeServerService"/>
+    <postStartupActivity implementation="com.shinsanghoon.streamdeck.BridgeStartupActivity"/>
+  </extensions>
+</idea-plugin>
