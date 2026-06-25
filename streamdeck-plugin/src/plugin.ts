@@ -91,10 +91,13 @@ const launcherAction = new LauncherAction(launcherState, {
   refresh: refreshLauncher,
   saveProjectPreferences: async (projectPath, preferences) => {
     const result = launcherConfigStore.saveProjectPreferences(projectPath, preferences);
+    if (result.error) {
+      streamDeck.logger.error(result.error);
+      return { error: result.error };
+    }
     launcherState.applyConfig(result.config);
-    launcherState.setConfigError(result.error);
-    if (result.error) streamDeck.logger.error(result.error);
-    return { error: result.error };
+    launcherState.setConfigError(null);
+    return { error: null };
   },
   sendToPropertyInspector: (payload) => streamDeck.ui.sendToPropertyInspector(payload),
   log: (m) => streamDeck.logger.error(m),
