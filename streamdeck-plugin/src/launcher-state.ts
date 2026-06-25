@@ -2,6 +2,7 @@ import type {
   IntelliJProject,
   LauncherCommand,
   LauncherConfig,
+  LauncherEditorSnapshot,
   LauncherPage,
   LauncherProject,
   LauncherSlot,
@@ -12,6 +13,10 @@ import { DEFAULT_NPM_ORDER, orderedNpmScripts } from "./project-detector.js";
 
 const DEFAULT_TASKS = ["bootRun", "test", "build", "clean"];
 const SLOT_COUNT = 15;
+
+function normalizeOptionalPath(path?: string): string | null {
+  return path && path.trim() ? normalizeProjectPath(path) : null;
+}
 
 export class LauncherState {
   private page: LauncherPage = { kind: "home" };
@@ -59,15 +64,39 @@ export class LauncherState {
   }
 
   applyProjectCapabilities(path: string, capabilities: ProjectCapabilities): void {
+    const npmScripts = [...new Set(capabilities.npmScripts.map((script) => script.trim()).filter(Boolean))];
     this.capabilities.set(normalizeProjectPath(path), {
       hasGradle: capabilities.hasGradle,
-      npmScripts: orderedNpmScripts(capabilities.npmScripts),
+      npmScripts,
     });
   }
 
   openProject(path: string): void {
     const normalizedPath = normalizeProjectPath(path);
     if (this.projectFor(normalizedPath)) this.page = { kind: "project", path: normalizedPath };
+  }
+
+  editorSnapshot(selectedPath?: string, status: string | null = null, error: string | null = null): LauncherEditorSnapshot {
+    const configuredPaths = new Set(this.config.projects.map((project) => project.path));
+    const normalizedSelectedPath = normalizeOptionalPath(selectedPath);
+    const resolvedSelectedPath = normalizedSelectedPath && configuredPaths.has(normalizedSelectedPath)
+      ? normalizedSelectedPath
+      : this.config.projects[0]?.path ?? null;
+    const snapshotError = arguments.length >= 3 ? error : this.configError;
+
+    return {
+      selectedPath: resolvedSelectedPath,
+      status,
+      error: snapshotError,
+      projects: this.config.projects.map((project) => ({
+        name: project.name,
+        path: project.path,
+        favorites: [...project.favorites],
+        npmOrder: [...project.npmOrder],
+        detectedGradleTasks: [...(this.detectedTasks.get(project.path) ?? [])],
+        detectedNpmScripts: [...(this.capabilities.get(project.path)?.npmScripts ?? [])],
+      })),
+    };
   }
 
   back(): void { this.page = { kind: "home" }; }
@@ -140,7 +169,7 @@ export class LauncherState {
         status,
       })));
     }
-    commands.push(...(capabilities?.npmScripts ?? []).map((script) => ({
+    commands.push(...orderedNpmScripts(capabilities?.npmScripts ?? [], project.npmOrder).map((script) => ({
       kind: "npm" as const,
       projectPath: project.path,
       script,
@@ -173,6 +202,8 @@ export class LauncherState {
       projects: config.projects.map((project) => ({
         ...project,
         path: normalizeProjectPath(project.path),
+        favorites: [...project.favorites],
+        npmOrder: [...project.npmOrder],
       })),
     };
   }

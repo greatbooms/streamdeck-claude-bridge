@@ -130,4 +130,63 @@ describe("LauncherState", () => {
     state.back();
     expect(state.currentPage()).toEqual({ kind: "home" });
   });
+
+  it("orders npm commands with the configured project npmOrder", () => {
+    const state = new LauncherState({
+      projects: [{
+        name: "Front",
+        path: "/repo/front",
+        gradleCommand: "./gradlew",
+        favorites: [],
+        npmOrder: ["dev", "build"],
+      }],
+    });
+    state.applyProjectCapabilities("/repo/front", {
+      hasGradle: false,
+      npmScripts: ["build", "start:dev", "lint", "dev"],
+    });
+    state.openProject("/repo/front");
+
+    const commands = state.slots().filter((slot) => slot.kind === "command");
+
+    expect(commands.map((slot) => slot.label)).toEqual(["dev", "build", "lint", "start:dev"]);
+  });
+
+  it("exposes configured projects for the launcher editor", () => {
+    const state = new LauncherState(config);
+    state.applyProjectTasks("/repo/api", ["bootRun", "classes"]);
+    state.applyProjectCapabilities("/repo/api", { hasGradle: true, npmScripts: ["build", "start:dev"] });
+
+    expect(state.editorSnapshot("/repo/api")).toEqual({
+      selectedPath: "/repo/api",
+      status: null,
+      error: null,
+      projects: [
+        {
+          name: "API",
+          path: "/repo/api",
+          favorites: ["bootRun", "test"],
+          npmOrder: ["start:dev", "dev", "start", "test", "build", "lint"],
+          detectedGradleTasks: ["bootRun", "classes"],
+          detectedNpmScripts: ["build", "start:dev"],
+        },
+        {
+          name: "Admin",
+          path: "/repo/admin",
+          favorites: [],
+          npmOrder: ["start:dev", "dev", "start", "test", "build", "lint"],
+          detectedGradleTasks: [],
+          detectedNpmScripts: [],
+        },
+      ],
+    });
+  });
+
+  it("keeps editor snapshots read-only", () => {
+    const state = new LauncherState(config);
+    const snapshot = state.editorSnapshot("/repo/api");
+    snapshot.projects[0].favorites.push("mutated");
+
+    expect(state.editorSnapshot("/repo/api").projects[0].favorites).toEqual(["bootRun", "test"]);
+  });
 });
