@@ -150,7 +150,53 @@ cd "$REPO/streamdeck-plugin" && npx vitest run
 
 ---
 
-## 5. 다른 기기로 옮길 때 주의 (포터빌리티)
+## 5. Dev Launcher 프로파일
+
+IntelliJ 프로젝트 실행용 개발 프로파일은 선택 기능이다.
+
+1. `intellij-plugin/build/distributions/`에서 IntelliJ companion plugin zip을 설치한다.
+2. Stream Deck 앱에서 번들된 **Dev Launcher** 프로파일을 설치한다.
+3. 필요한 경우 `~/Library/Application Support/streamdeck-claude-bridge/launcher.json` 파일로 이름/favorites를 보정한다.
+4. Stream Deck 앱에서 **Dev Launcher** 프로파일의 `Project Launcher Tile`을 선택하면 Property Inspector에서 Gradle favorites와 npm order를 편집할 수 있다. 이 편집기는 같은 `launcher.json` 파일을 쓴다.
+
+기본 동작:
+
+- IntelliJ에 열려 있는 프로젝트를 자동으로 첫 화면에 표시한다.
+- 프로젝트 루트에 `gradlew`, `build.gradle*`, `settings.gradle*`가 있으면 Gradle command를 표시한다.
+- 프로젝트 루트에 `package.json`이 있으면 npm scripts를 표시한다.
+- Gradle command는 IntelliJ에 열려 있으면 IntelliJ Gradle Run으로 실행하고, 실패하면 iTerm2 fallback으로 실행한다.
+- npm command는 같은 이름의 IntelliJ Run Configuration이 있으면 IntelliJ에서 실행하고, 없으면 iTerm2 fallback으로 `npm run <script>`를 실행한다.
+
+`launcher.json` 예시:
+
+```json
+{
+  "projects": [
+    {
+      "name": "API",
+      "path": "/Users/eric/workspace/api-server",
+      "gradleCommand": "./gradlew",
+      "favorites": ["bootRun", "test", "build"],
+      "npmOrder": ["start:dev", "dev", "start", "test", "build", "lint"]
+    },
+    {
+      "name": "Web",
+      "path": "/Users/eric/workspace/web",
+      "gradleCommand": "./gradlew",
+      "favorites": [],
+      "npmOrder": ["start:dev", "dev", "start", "test", "build", "lint"]
+    }
+  ]
+}
+```
+
+- `launcher.json`에 없어도 IntelliJ에 열린 프로젝트는 표시된다.
+- `favorites`는 Gradle command를 우선 노출할 때 쓴다.
+- `npmOrder`는 npm scripts를 우선 노출할 때 쓰며, 기본 순서는 `start:dev`, `dev`, `start`, `test`, `build`, `lint`이다.
+
+---
+
+## 6. 다른 기기로 옮길 때 주의 (포터빌리티)
 
 - **경로 의존:** 글로벌 훅 경로, launchd plist, 플러그인 링크 모두 그 기기의 `$REPO` 절대경로를 쓴다.
   새 기기에선 §1 의 `install-launchd.sh` 재실행 + §2 의 훅 경로를 새 경로로 다시 적어야 한다.
@@ -166,7 +212,7 @@ cd "$REPO/streamdeck-plugin" && npx vitest run
 
 ---
 
-## 6. 빠른 점검 / 트러블슈팅
+## 7. 빠른 점검 / 트러블슈팅
 
 ```bash
 # 브릿지 살아있나
@@ -187,5 +233,5 @@ tail -20 "$REPO"/streamdeck-plugin/com.shinsanghoon.claude-bridge.sdPlugin/logs/
 증상별:
 - **스트림덱에 안 뜸** → ① 브릿지 down? ② 질문난 claude/codex 가 글로벌 훅 적용된 **새** 세션인가? ③ Codex는 `/hooks` 에서 trust 했나? ④ 플러그인 로그 `profile enter`.
 - **전환은 되는데 복귀 안 됨** → 질문 올 때 **평소 프로파일에 있었는지** 확인(복귀는 "직전 프로파일"로).
-- **`switchToProfile timed out`** → 번들 프로파일 미설치(SD 앱 재실행 후 "프로필 설치") 또는 기기 타입 불일치(§5).
+- **`switchToProfile timed out`** → 번들 프로파일 미설치(SD 앱 재실행 후 "프로필 설치") 또는 기기 타입 불일치(§6).
 - **버튼 라벨은 뜨는데 안 골라짐** → injector 가 방향키/Enter 를 개별 전송하는지(이미 반영됨), 대상 세션 UUID 일치.

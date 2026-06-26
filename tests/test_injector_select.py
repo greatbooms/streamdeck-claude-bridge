@@ -1,4 +1,5 @@
 import pytest
+import iterm2
 from bridge.injector import ItermInjector, SessionNotFound
 
 
@@ -13,6 +14,25 @@ class FakeApp:
         self._sessions = sessions
     def get_session_by_id(self, sid):
         return self._sessions.get(sid)
+
+
+class FakeTab:
+    def __init__(self, session):
+        self.current_session = session
+
+
+class FakeWindow:
+    def __init__(self, session):
+        self.current_tab = FakeTab(session)
+
+
+class FakeWindowApp(FakeApp):
+    def __init__(self, session):
+        super().__init__({})
+        self.window = FakeWindow(session)
+
+    async def async_create_window(self):
+        return self.window
 
 
 async def test_select_sends_keys_separately():
@@ -47,3 +67,29 @@ async def test_select_without_app_raises():
     inj = ItermInjector()
     with pytest.raises(RuntimeError):
         await inj._select("U1", 1)
+
+
+async def test_run_command_opens_window_and_sends_command():
+    sess = FakeSession()
+    inj = ItermInjector()
+    inj._app = FakeWindowApp(sess)
+    await inj._run_command("cd /tmp && ./gradlew test")
+    assert sess.sent == ["cd /tmp && ./gradlew test\n"]
+
+
+async def test_run_command_uses_window_api_when_app_has_no_create_window(monkeypatch):
+    sess = FakeSession()
+    connection = object()
+
+    async def create_window(actual_connection):
+        assert actual_connection is connection
+        return FakeWindow(sess)
+
+    monkeypatch.setattr(iterm2.Window, "async_create", create_window)
+    inj = ItermInjector()
+    inj._app = FakeApp({})
+    inj._connection = connection
+
+    await inj._run_command("cd /tmp && npm run start:dev")
+
+    assert sess.sent == ["cd /tmp && npm run start:dev\n"]

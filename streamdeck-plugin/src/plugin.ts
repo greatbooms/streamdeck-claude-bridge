@@ -8,12 +8,26 @@ import { LogoAction } from "./logo-action.js";
 import { QuestionAction } from "./question-action.js";
 import { CodexLogoAction } from "./codex-logo-action.js";
 import { syncDeckState } from "./plugin-sync.js";
+import { GradleBridgeClient } from "./gradle-bridge-client.js";
+import { IntelliJClient } from "./intellij-client.js";
+import { LauncherAction } from "./launcher-action.js";
+import { FileLauncherConfigStore } from "./launcher-config-store.js";
+import { LAUNCHER_REFRESH_INTERVAL_MS } from "./launcher-refresh-policy.js";
+import { LauncherState } from "./launcher-state.js";
+import { detectProjectCapabilities } from "./project-detector.js";
 
 const DEFAULT_PROFILE = "Claude Bridge";
 const URL = "ws://127.0.0.1:8787/ws";
 
 // SD 번들 Node 20 에는 전역 WebSocket 이 없으므로 'ws' 기반 팩토리를 주입한다.
 const client = new BridgeClient(URL, (u) => new WebSocket(u) as unknown as WebSocketLike);
+const intellijClient = new IntelliJClient();
+const gradleBridgeClient = new GradleBridgeClient();
+const launcherConfigStore = new FileLauncherConfigStore();
+
+const initialLauncherConfig = launcherConfigStore.load();
+const launcherState = new LauncherState(initialLauncherConfig.config);
+launcherState.setConfigError(initialLauncherConfig.error);
 
 function firstDeviceId(): string | null {
   // 번들 프로파일은 DeviceType 0(표준 Stream Deck)용이므로 그 타입의 연결된 기기를 우선 선택.
@@ -37,6 +51,57 @@ const switcher = new ProfileSwitcher(
 const answerAction = new AnswerAction(client);
 const cancelAction = new CancelAction(client);
 const questionAction = new QuestionAction(client);
+let launcherRefreshInFlight = false;
+
+async function refreshLauncher(): Promise<void> {
+  const configLoad = launcherConfigStore.load();
+  launcherState.applyConfig(configLoad.config);
+  launcherState.setConfigError(configLoad.error);
+  if (configLoad.error) streamDeck.logger.error(`Launcher config load failed: ${configLoad.error}`);
+  const projects = await intellijClient.projects();
+  launcherState.applyIntelliJProjects(projects);
+  for (const project of projects) {
+    launcherState.applyProjectCapabilities(project.path, detectProjectCapabilities(project.path));
+  }
+  for (const project of configLoad.config.projects) {
+    launcherState.applyProjectCapabilities(project.path, detectProjectCapabilities(project.path));
+  }
+  const page = launcherState.currentPage();
+  if (!configLoad.error && page.kind === "project") {
+    launcherState.applyProjectTasks(page.path, await intellijClient.tasks(page.path));
+  }
+  await launcherAction.refreshAll();
+}
+
+function refreshLauncherSafely(): void {
+  if (!launcherAction.hasVisibleKeys() || launcherRefreshInFlight) return;
+  launcherRefreshInFlight = true;
+  void refreshLauncher()
+    .catch((err: unknown) => {
+      streamDeck.logger.error(`Launcher refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+    })
+    .finally(() => {
+      launcherRefreshInFlight = false;
+    });
+}
+
+const launcherAction = new LauncherAction(launcherState, {
+  intellij: intellijClient,
+  bridge: gradleBridgeClient,
+  refresh: refreshLauncher,
+  saveProjectPreferences: async (projectPath, preferences) => {
+    const result = launcherConfigStore.saveProjectPreferences(projectPath, preferences);
+    if (result.error) {
+      streamDeck.logger.error(result.error);
+      return { error: result.error };
+    }
+    launcherState.applyConfig(result.config);
+    launcherState.setConfigError(null);
+    return { error: null };
+  },
+  sendToPropertyInspector: (payload) => streamDeck.ui.sendToPropertyInspector(payload),
+  log: (m) => streamDeck.logger.error(m),
+});
 
 client.onChange(() => {
   void syncDeckState({
@@ -51,7 +116,10 @@ client.onChange(() => {
 streamDeck.actions.registerAction(answerAction);
 streamDeck.actions.registerAction(cancelAction);
 streamDeck.actions.registerAction(questionAction);
+streamDeck.actions.registerAction(launcherAction);
 streamDeck.actions.registerAction(new LogoAction());
 streamDeck.actions.registerAction(new CodexLogoAction());
 streamDeck.connect();
 client.start();
+refreshLauncherSafely();
+setInterval(refreshLauncherSafely, LAUNCHER_REFRESH_INTERVAL_MS);

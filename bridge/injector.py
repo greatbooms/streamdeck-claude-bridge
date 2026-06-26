@@ -29,6 +29,7 @@ class ItermInjector:
 
     def __init__(self, key_delay: float = 0.08):
         self._app = None
+        self._connection = None
         self._loop = None
         self._thread = None
         self._ready = threading.Event()
@@ -60,12 +61,31 @@ class ItermInjector:
             raise SessionNotFound(session)
         await s.async_send_text(ESC)
 
+    async def _run_command(self, command: str):
+        if self._app is None:
+            raise RuntimeError("iTerm2 app not connected")
+        window = await self._create_window()
+        session = window.current_tab.current_session
+        await session.async_send_text(command + "\n")
+
+    async def _create_window(self):
+        legacy_create_window = getattr(self._app, "async_create_window", None)
+        if legacy_create_window is not None:
+            return await legacy_create_window()
+        if self._connection is None:
+            raise RuntimeError("iTerm2 connection not connected")
+        import iterm2
+        return await iterm2.Window.async_create(self._connection)
+
     # --- 스레드세이프 제출 (메인 루프에서 호출) ---
     def submit_select(self, session: str, index: int):
         return asyncio.run_coroutine_threadsafe(self._select(session, index), self._require_loop())
 
     def submit_cancel(self, session: str):
         return asyncio.run_coroutine_threadsafe(self._cancel(session), self._require_loop())
+
+    def submit_run_command(self, command: str):
+        return asyncio.run_coroutine_threadsafe(self._run_command(command), self._require_loop())
 
     def _require_loop(self):
         if self._loop is None:
@@ -82,6 +102,7 @@ class ItermInjector:
         import iterm2
 
         async def main(connection):
+            self._connection = connection
             self._app = await iterm2.async_get_app(connection)
             self._loop = asyncio.get_event_loop()
             self._ready.set()
@@ -94,6 +115,7 @@ class ItermInjector:
             except Exception as e:  # noqa: BLE001
                 log.warning("iTerm2 연결 실패/끊김, 3초 후 재연결: %s", e)
                 self._app = None
+                self._connection = None
                 self._loop = None  # 멈춘 루프로의 제출이 행(hang) 되지 않도록 함께 비움
                 import time
                 time.sleep(3)

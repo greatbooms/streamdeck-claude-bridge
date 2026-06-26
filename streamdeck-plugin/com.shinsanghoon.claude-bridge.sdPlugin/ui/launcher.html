@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project Launcher Preferences</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #2d2d2d;
+      --panel: #3a3a3a;
+      --field: #1f1f1f;
+      --border: #555;
+      --text: #f2f2f2;
+      --muted: #b8b8b8;
+      --accent: #4aa3ff;
+      --error: #ff7878;
+      --success: #8de58d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 14px;
+      background: var(--bg);
+      color: var(--text);
+      font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    select,
+    input,
+    textarea,
+    button {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font: inherit;
+    }
+
+    select,
+    input,
+    textarea {
+      min-height: 28px;
+      padding: 6px 8px;
+      background: var(--field);
+      color: var(--text);
+    }
+
+    input[readonly] {
+      color: var(--muted);
+    }
+
+    textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+
+    button {
+      min-height: 30px;
+      padding: 6px 10px;
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: var(--accent);
+    }
+
+    button:disabled,
+    select:disabled,
+    input:disabled,
+    textarea:disabled {
+      cursor: default;
+      opacity: 0.55;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .hints {
+      display: grid;
+      gap: 6px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--muted);
+    }
+
+    .hint-title {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .message {
+      min-height: 18px;
+      color: var(--muted);
+    }
+
+    .message.error {
+      color: var(--error);
+    }
+
+    .message.success {
+      color: var(--success);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <label>
+      Project
+      <select id="projectSelect"></select>
+    </label>
+
+    <label>
+      Path
+      <input id="projectPath" type="text" readonly />
+    </label>
+
+    <label>
+      Gradle favorites
+      <textarea id="favorites" spellcheck="false" placeholder="bootRun&#10;test&#10;build"></textarea>
+    </label>
+
+    <label>
+      npm order
+      <textarea id="npmOrder" spellcheck="false" placeholder="start:dev&#10;dev&#10;start&#10;test&#10;build&#10;lint"></textarea>
+    </label>
+
+    <section class="hints" aria-label="Detected hints">
+      <div>
+        <div class="hint-title">Detected Gradle tasks</div>
+        <div id="gradleHints"></div>
+      </div>
+      <div>
+        <div class="hint-title">Detected npm scripts</div>
+        <div id="npmHints"></div>
+      </div>
+    </section>
+
+    <div class="row">
+      <button id="refreshButton" type="button">Refresh</button>
+      <button id="saveButton" class="primary" type="button">Save</button>
+    </div>
+
+    <div id="message" class="message" role="status" aria-live="polite"></div>
+  </main>
+
+  <script>
+    const controls = {
+      projectSelect: document.getElementById("projectSelect"),
+      projectPath: document.getElementById("projectPath"),
+      favorites: document.getElementById("favorites"),
+      npmOrder: document.getElementById("npmOrder"),
+      gradleHints: document.getElementById("gradleHints"),
+      npmHints: document.getElementById("npmHints"),
+      refreshButton: document.getElementById("refreshButton"),
+      saveButton: document.getElementById("saveButton"),
+      message: document.getElementById("message"),
+    };
+
+    let websocket = null;
+    let propertyInspectorUuid = null;
+    let actionUuid = null;
+    let actionContext = null;
+    let snapshot = { selectedPath: null, projects: [], status: null, error: null };
+
+    function connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUuid, inRegisterEvent, inInfo, inActionInfo) {
+      propertyInspectorUuid = inPropertyInspectorUuid;
+      const actionInfo = parseActionInfo(inActionInfo);
+      actionUuid = actionInfo.action;
+      actionContext = actionInfo.context;
+      websocket = new WebSocket("ws://127.0.0.1:" + inPort);
+
+      websocket.addEventListener("open", function () {
+        websocket.send(JSON.stringify({
+          event: inRegisterEvent,
+          uuid: propertyInspectorUuid,
+        }));
+        sendToPlugin({ type: "launcherEditorReady" });
+      });
+
+      websocket.addEventListener("message", function (event) {
+        handleStreamDeckMessage(event.data);
+      });
+
+      websocket.addEventListener("close", function () {
+        setMessage("Disconnected from Stream Deck.", true);
+      });
+
+      websocket.addEventListener("error", function () {
+        setMessage("Stream Deck connection error.", true);
+      });
+    }
+
+    window.connectElgatoStreamDeckSocket = connectElgatoStreamDeckSocket;
+
+    function parseActionInfo(actionInfo) {
+      try {
+        const parsed = typeof actionInfo === "string" ? JSON.parse(actionInfo) : actionInfo;
+        return {
+          action: parsed && typeof parsed.action === "string" ? parsed.action : null,
+          context: parsed && typeof parsed.context === "string" ? parsed.context : null,
+        };
+      } catch (err) {
+        return { action: null, context: null };
+      }
+    }
+
+    function handleStreamDeckMessage(rawMessage) {
+      let message;
+      try {
+        message = JSON.parse(rawMessage);
+      } catch (err) {
+        setMessage("Received an invalid Stream Deck message.", true);
+        return;
+      }
+
+      const payload = message && message.payload ? message.payload : message;
+      if (!payload || typeof payload.type !== "string") return;
+
+      if (payload.type === "launcherEditorSnapshot") {
+        snapshot = normalizeSnapshot(payload);
+        renderSnapshot();
+        return;
+      }
+
+      if (payload.type === "launcherEditorError") {
+        setMessage(payload.error || "Launcher editor error.", true);
+      }
+    }
+
+    function normalizeSnapshot(payload) {
+      return {
+        selectedPath: typeof payload.selectedPath === "string" ? payload.selectedPath : null,
+        projects: Array.isArray(payload.projects) ? payload.projects.map(normalizeProject) : [],
+        status: typeof payload.status === "string" ? payload.status : null,
+        error: typeof payload.error === "string" ? payload.error : null,
+      };
+    }
+
+    function normalizeProject(project) {
+      return {
+        name: typeof project.name === "string" ? project.name : "Unnamed project",
+        path: typeof project.path === "string" ? project.path : "",
+        favorites: toStringArray(project.favorites),
+        npmOrder: toStringArray(project.npmOrder),
+        detectedGradleTasks: toStringArray(project.detectedGradleTasks),
+        detectedNpmScripts: toStringArray(project.detectedNpmScripts),
+      };
+    }
+
+    function toStringArray(value) {
+      return Array.isArray(value) ? value.filter(function (item) {
+        return typeof item === "string";
+      }) : [];
+    }
+
+    function renderSnapshot() {
+      const selectedPath = selectedProjectPath();
+      renderProjectSelect(selectedPath);
+      renderProjectDetails(projectByPath(selectedPath));
+      renderAvailability(snapshot.projects.length > 0);
+
+      if (snapshot.error) {
+        setMessage(snapshot.error, true);
+      } else if (snapshot.status) {
+        setMessage(snapshot.status, false, true);
+      } else {
+        setMessage("");
+      }
+    }
+
+    function renderProjectSelect(selectedPath) {
+      while (controls.projectSelect.firstChild) {
+        controls.projectSelect.removeChild(controls.projectSelect.firstChild);
+      }
+
+      if (!snapshot.projects.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No projects available";
+        controls.projectSelect.appendChild(option);
+        return;
+      }
+
+      snapshot.projects.forEach(function (project) {
+        const option = document.createElement("option");
+        option.value = project.path;
+        option.textContent = project.name;
+        controls.projectSelect.appendChild(option);
+      });
+      controls.projectSelect.value = selectedPath;
+    }
+
+    function renderProjectDetails(project) {
+      controls.projectPath.value = project ? project.path : "";
+      controls.favorites.value = project ? project.favorites.join("\n") : "";
+      controls.npmOrder.value = project ? project.npmOrder.join("\n") : "";
+      controls.gradleHints.textContent = project ? formatList(project.detectedGradleTasks) : "No projects available";
+      controls.npmHints.textContent = project ? formatList(project.detectedNpmScripts) : "No projects available";
+    }
+
+    function renderAvailability(hasProjects) {
+      controls.projectSelect.disabled = !hasProjects;
+      controls.projectPath.disabled = !hasProjects;
+      controls.favorites.disabled = !hasProjects;
+      controls.npmOrder.disabled = !hasProjects;
+      controls.saveButton.disabled = !hasProjects;
+    }
+
+    function selectedProjectPath() {
+      if (snapshot.selectedPath && projectByPath(snapshot.selectedPath)) {
+        return snapshot.selectedPath;
+      }
+      if (controls.projectSelect.value && projectByPath(controls.projectSelect.value)) {
+        return controls.projectSelect.value;
+      }
+      return snapshot.projects.length ? snapshot.projects[0].path : "";
+    }
+
+    function projectByPath(path) {
+      return snapshot.projects.find(function (project) {
+        return project.path === path;
+      }) || null;
+    }
+
+    function formatList(items) {
+      return items.length ? items.join(", ") : "None detected";
+    }
+
+    function linesFromTextarea(textarea) {
+      return textarea.value.split(/\r?\n/).map(function (line) {
+        return line.trim();
+      }).filter(function (line) {
+        return line.length > 0;
+      });
+    }
+
+    function sendToPlugin(payload) {
+      if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+        setMessage("Stream Deck is not connected.", true);
+        return;
+      }
+      if (!actionContext) {
+        setMessage("Stream Deck action context is unavailable.", true);
+        return;
+      }
+
+      websocket.send(JSON.stringify({
+        event: "sendToPlugin",
+        action: actionUuid,
+        context: actionContext,
+        payload: payload,
+      }));
+    }
+
+    function setMessage(text, isError, isSuccess) {
+      controls.message.textContent = text || "";
+      controls.message.className = "message";
+      if (isError) {
+        controls.message.classList.add("error");
+      } else if (isSuccess) {
+        controls.message.classList.add("success");
+      }
+    }
+
+    controls.projectSelect.addEventListener("change", function () {
+      const project = projectByPath(controls.projectSelect.value);
+      snapshot.selectedPath = project ? project.path : null;
+      renderProjectDetails(project);
+    });
+
+    controls.refreshButton.addEventListener("click", function () {
+      const projectPath = controls.projectSelect.value;
+      sendToPlugin(projectPath
+        ? { type: "launcherEditorRefresh", projectPath: projectPath }
+        : { type: "launcherEditorRefresh" });
+    });
+
+    controls.saveButton.addEventListener("click", function () {
+      const projectPath = controls.projectSelect.value;
+      if (!projectPath) return;
+
+      sendToPlugin({
+        type: "saveProjectPreferences",
+        projectPath: projectPath,
+        favorites: linesFromTextarea(controls.favorites),
+        npmOrder: linesFromTextarea(controls.npmOrder),
+      });
+    });
+
+    renderSnapshot();
+  </script>
+</body>
+</html>

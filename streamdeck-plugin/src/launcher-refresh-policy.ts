@@ -1,0 +1,1 @@
+export const LAUNCHER_REFRESH_INTERVAL_MS = 30_000;
